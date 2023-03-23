@@ -15,6 +15,7 @@ def build_graph(df):
     # Extract unique station IDs and their coordinates
     stations = df[["Station ID", "Latitude", "Longitude"]].drop_duplicates()
     station_coordinates = stations[["Latitude", "Longitude"]].values
+    station_coordinates = convert_wgs2utm(station_coordinates)
 
     # Perform Delaunay triangulation
     tri = Delaunay(station_coordinates)
