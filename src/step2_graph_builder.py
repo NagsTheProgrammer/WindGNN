@@ -1,6 +1,8 @@
 from scipy.spatial import Delaunay
 import networkx as nx
 import math
+from scipy.linalg import fractional_matrix_power
+import numpy as np
 
 
 def convert_wgs2utm(coords):
@@ -9,7 +11,6 @@ def convert_wgs2utm(coords):
         coords[i][0] = radius * math.log(math.tan(math.pi / 4 + coords[i][0] * math.pi / 360))
         coords[i][1] = radius * (coords[i][1] * math.pi / 180)
     return coords
-
 
 def build_graph(df):
     # Extract unique station IDs and their coordinates
@@ -30,9 +31,21 @@ def build_graph(df):
         graph.add_edges_from([(stations.iloc[a]["Station ID"], stations.iloc[b]["Station ID"]),
                               (stations.iloc[b]["Station ID"], stations.iloc[c]["Station ID"]),
                               (stations.iloc[c]["Station ID"], stations.iloc[a]["Station ID"])])
+    
+    # Create an adjacency matrix from the graph
+    A = np.array(nx.attr_matrix(graph)[0])
 
-    return graph
+    # Create a self-looped adjacency matrix from A
+    A_hat = A + np.identity(len(A))
 
+    # Create a degree matrix from A_hat
+    D = np.diag(np.sum(A_hat, axis=0))
+
+    # Create a propagated adjacency matrix using A_hat and D
+    D_half_norm = fractional_matrix_power(D, -0.5)
+    A_star = D_half_norm.dot(A_hat).dot(D_half_norm)
+
+    return A_star
 
 # import networkx as nx
 # import numpy as np
