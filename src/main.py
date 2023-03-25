@@ -13,24 +13,25 @@ if __name__ == "__main__":
     df = load_and_process_wind_speed_dataset()
 
     # Step 2 - Build distance graph
-    graph = build_graph(df)
+    adj_matrix = build_graph(df)
 
     # Step 3 - Select important features
-    features_df = extract_features(df)
+    attr_matrix = extract_features(df).to_numpy()
 
     # Step 4 - Define GCN
 
     # Defining Adjacency Matrix, Attribute Matrix, Ground Truth
     # adj_matrix -> manually derived
-    # attr_matrix -> output from GCN(?)
+    # attr_matrix -> output from feature extractor
     # ground_truth -> basically y_train(?)
     # *** figure out where to get these from
-    adj_matrix = torch.tensor([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
-    attr_matrix = torch.randn(3, 4)
-    ground_truth = torch.randn(3, 2)
+    # adj_matrix = torch.tensor([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
+    # attr_matrix = torch.randn(3, 4)
+    # ground_truth = torch.randn(3, 2)
+    ground_truth = attr_matrix
 
     # Defining Two-Layer GCN
-    model = GCN_GRU_Model(input_dim=4, hidden_dim=8, output_dim=16, gru_hidden_dim=4) # Renamed for simplicity
+    model = GCN_GRU(input_dim=13, hidden_dim=13, output_dim=13, gru_hidden_dim=13) # Pretty sure all our dimensions are the same, need to confirm
 
     # Using GPU if available
     if torch.cuda.is_available():
