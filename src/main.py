@@ -18,20 +18,72 @@ if __name__ == "__main__":
     # Step 3 - Select important features
     features_df = extract_features(df)
 
-    input_dim = 111 # input size
-    hidden_dim = 111 # hidden layer size
-    layer_dim = 111 # how many layers
-    output_dim = 111 # output size
-    num_features = 111 # number of features from dataset
-    hidden_channels = 111 # number of hidden channels
-    num_classes = 111 # number of output classes ??? regression
+    # Step 4 - Define GCN
 
-    # model = ???
-    model_GCN = GCNModel(input_dim, hidden_dim, layer_dim, output_dim)
-    model_GRU = GRUModel(num_features, hidden_channels, num_classes)
-    model_GCN_GRU = GCNGRUModel(model_GCN, model_GRU)
+    # Defining Adjacency Matrix, Attribute Matrix, Ground Truth
+    # adj_matrix -> manually derived
+    # attr_matrix -> output from GCN(?)
+    # ground_truth -> basically y_train(?)
+    # *** figure out where to get these from
+    adj_matrix = torch.tensor([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
+    attr_matrix = torch.randn(3, 4)
+    ground_truth = torch.randn(3, 2)
 
+    # Defining Two-Layer GCN
+    model = GCN_GRU_Model(input_dim=4, hidden_dim=8, output_dim=16, gru_hidden_dim=4) # Renamed for simplicity
+
+    # Using GPU if available
     if torch.cuda.is_available():
-        model_GCN_GRU.cuda()
+        model.cuda()
 
-    criterion = nn.CrossEntropyLoss()
+    # Step 5 - Generate Train / Test Data Sequences
+
+    n_iters = 100 # arbitrarily chosen, one cycle of
+    batch_size = 64 # arbitrarily chosen
+    train_loader, test_loader = generate_sequences(df, GCN, batch_size)
+
+    # Step 6 - Train GRU
+
+    # hyperparameters to explore:
+    # dropout - [0.0, 1.1]
+    # learning rate - scheduling(?) - [0.0001, 0.1]
+    # epochs - early stopping(?) - [10, 300]
+    # hidden state size -  [2, 256]
+    # number of hidden layers - [1, 4]
+    # batch size - [4, 8, 16, 32, 64, 128, 256]
+    # sequence length - [12, 24, 48, 168]
+
+    learning_rate = 0.001
+    epochs = 25 # number of times the model sees the complete dataset
+
+    # *** From previous iteration where GRU and GCN were separate models
+    # gru_model = GRUModel(input_size, hidden_size, num_layers, output_size)
+
+    # Defining Loss Function
+    # lossFunction = nn.L1loss() # Mean Absolute Error - used when data has significant outliers from mean value
+    lossFunction = nn.MSEloss() # Mean Squared Error - default for regression problems
+
+    # Defining optimizer
+    # (params, lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False, *, foreach=None, maximize=False, capturable=False, differentiable=False, fused=None)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+    loss_list = []
+    iter = 0
+    for epoch in range(epochs): # Repeating for every epoch
+        for i, (batch_x, batch_y) in enumerate(train_loader): # for each batch in the train_loader
+            outputs = model(adj_matrix, batch_x)
+            # clear the gradients
+            optimizer.zero_grad()
+            # loss
+            # print(outputs.shape, batch_y.shape)
+            loss = lossFunction(outputs, batch_y)
+            # backpropagation
+            loss.backward()
+            optimizer.step()
+            iter += 1
+            if iter % 100 == 0:
+                print("iter: %d, loss: %1.5f" % (iter, loss.item()))
+
+    # Step 7 - Printing Results
+
+    #  ***

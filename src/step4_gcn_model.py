@@ -4,7 +4,7 @@ from torch_geometric.nn import GCNConv
 from torch_geometric.data import Data
 import numpy as np
 
-
+# defining class GCNModel
 class GCNModel(torch.nn.Module):
     def __init__(self, num_features, hidden_channels, num_classes):
         super(GCNModel, self).__init__()
@@ -18,7 +18,6 @@ class GCNModel(torch.nn.Module):
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.conv2(x, edge_index)
         return F.log_softmax(x, dim=1)
-
 
 def train_gcn_model(features_df, graph, device, hidden_channels, num_classes, learning_rate, num_epochs, verbose=True):
     dataset = __dataframe_to_data_object(features_df, graph)
