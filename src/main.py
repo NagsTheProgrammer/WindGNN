@@ -42,7 +42,7 @@ if __name__ == "__main__":
 
     n_iters = 100 # arbitrarily chosen, one cycle of
     batch_size = 64 # arbitrarily chosen
-    #train_loader, test_loader = generate_sequences(df, model, batch_size)
+    train_loader, test_loader = generate_sequences(df, model, batch_size)
 
     # Step 6 - Train GRU
 
