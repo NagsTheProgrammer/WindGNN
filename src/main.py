@@ -16,8 +16,9 @@ if __name__ == "__main__":
     dLength = len(adj_matrix)
 
     # Step 3 - Select important features
-    #attr_matrix = extract_features(df).to_numpy()
-    attr_matrix = np.array_split(extract_features(df), dLength)
+    attr_matrix = extract_features(df)
+    # attr_matrix = np.array_split(extract_features(df), dLength)
+    train_loader, test_loader = generate_sequences(attr_matrix)
 
     # Step 4 - Define GCN
 
@@ -29,7 +30,7 @@ if __name__ == "__main__":
     # adj_matrix = torch.tensor([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
     # attr_matrix = torch.randn(3, 4)
     # ground_truth = torch.randn(3, 2)
-    ground_truth = attr_matrix
+    # ground_truth = attr_matrix
 
     # Step 4,5 - Defining Two-Layer GCN
     model = GCN_GRU(input_dim=13, hidden_dim=13, output_dim=13, gru_hidden_dim=13) # Pretty sure all our dimensions are the same, need to confirm

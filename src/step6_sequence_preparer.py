@@ -14,9 +14,30 @@ def __create_sequences(data, seq_length):
 
     return np.array(xs), np.array(ys)
 
-def generate_sequences(df, model, batch_size):
+def generate_sequences(df, batch_size):
+    # plan, take in df, refactor into samples of 168 hourly timesteps in 3-dim tensor (x, y, z) = [station, feature, timestep]
+    # df before looks like 2-dim matrix (x, y) = [feature, timestep] *** includes all stations
+
+    attr_matrix = np.array_split(df, 7) # splitting df into each station *** works for small dataset, may not work for larger dataset as total timesteps for each station is unbalanced
+    dLength = len(attr_matrix[0])
+
+    attr_matrix_transpose = []
+    station_col = np.where(attr_matrix == "Verger AGCM")[0][0]
+    stations = np.unique(attr_matrix[:, station_col]) # get list of unique station values
+    for station in stations:
+        attr_matrix_transpose = np.append(attr_matrix_transpose, np.transpose(attr_matrix[(attr_matrix[:, station_col] == station)])) # finds matrix subset with single station, transposes, and appends to attr_matrix_transpose
+
+    # if above didn't work, this should
+    # attr_matrix_transpose = []
+    # for a in attr_matrix:
+    #     attr_matrix_transpose = np.append(attr_matrix_transpose, np.transpose(a)) # transposing into [feature, timestep]
+
+    attr_matrix_stack = np.stack(attr_matrix_transpose)
+
+    print(attr_matrix_stack.shape) # printing shape - expected (7, 13, 184107) = [station, faeture, timestep]
+
     # Get the output of the GCN
-    gcn_output = model(data).detach().numpy() # Detaching result from computation graph, converting into a numpy array
+    # gcn_output = model(data).detach().numpy() # Detaching result from computation graph, converting into a numpy array
 
     # Prepare the data for sequence generation
     df = df.set_index("Date/Time") # Setting index of df to Date/Time
