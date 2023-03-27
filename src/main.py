@@ -1,10 +1,9 @@
 from step1_loading_preprocessing import *
 from step2_graph_builder import *
 from step3_feature_extractor import *
-from step4_gcn_model import *
-from step5_sequence_preparer import *
-from step6_gru_model import *
-from step7_gcn_gru_combined_model import *
+from step4_gcn_layer_model import *
+from step6_sequence_preparer import *
+from step5_gcn_gru_combined_model import *
 # from step8_trainer import *
 
 if __name__ == "__main__":
@@ -32,7 +31,7 @@ if __name__ == "__main__":
     # ground_truth = torch.randn(3, 2)
     ground_truth = attr_matrix
 
-    # Defining Two-Layer GCN
+    # Step 4,5 - Defining Two-Layer GCN
     model = GCN_GRU(input_dim=13, hidden_dim=13, output_dim=13, gru_hidden_dim=13) # Pretty sure all our dimensions are the same, need to confirm
 
     # Using GPU if available

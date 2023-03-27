@@ -4,8 +4,8 @@ import torch
 
 def load_and_process_wind_speed_dataset(verbose: bool = True):
     # read in the csv file
-    coordinates_df = pd.read_csv(r'data/ACISStationCoordinates.csv')
-    full_df = pd.read_csv(r'data/ACISHourlyData-20200101-20221231.csv')
+    coordinates_df = pd.read_csv(r'../data/ACISStationCoordinates.csv')
+    full_df = pd.read_csv(r'../data/ACISHourlyData-20200101-20221231.csv')
 
     # remove useless fields
     full_df = full_df.drop(columns=["Unnamed: 0",
