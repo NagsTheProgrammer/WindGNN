@@ -4,7 +4,7 @@ import math
 from scipy.linalg import fractional_matrix_power
 import numpy as np
 
-
+# Method to convert spherical latitude and longitude into planar mercator coordinates
 def convert_wgs2utm(coords):
     radius = 6378137
     for i in range(len(coords)):
@@ -14,29 +14,40 @@ def convert_wgs2utm(coords):
 
 def build_graph(df):
     # Extract unique station IDs and their coordinates
-    stations = df[["Station ID", "Latitude", "Longitude"]].drop_duplicates()
+    stations = df[["Station Name", "Latitude", "Longitude"]].drop_duplicates()
     station_coordinates = stations[["Latitude", "Longitude"]].values
     station_coordinates = convert_wgs2utm(station_coordinates)
 
     # Perform Delaunay triangulation
-    tri = Delaunay(station_coordinates)
+    # tri = Delaunay(station_coordinates)
 
     # Create a NetworkX graph from the Delaunay triangulation
-    graph = nx.Graph()
-    graph.add_nodes_from(stations["Station ID"].values)
+    # graph = nx.Graph()
+    # graph.add_nodes_from(stations["Station Name"].values)
 
     # Iterate over the Delaunay triangles and add edges to the graph
-    for triangle in tri.simplices:
-        a, b, c = triangle
-        graph.add_edges_from([(stations.iloc[a]["Station ID"], stations.iloc[b]["Station ID"]),
-                              (stations.iloc[b]["Station ID"], stations.iloc[c]["Station ID"]),
-                              (stations.iloc[c]["Station ID"], stations.iloc[a]["Station ID"])])
+    # for triangle in tri.simplices:
+    #     a, b, c = triangle
+    #     graph.add_edges_from([(stations.iloc[a]["Station Name"], stations.iloc[b]["Station Name"]),
+    #                           (stations.iloc[b]["Station Name"], stations.iloc[c]["Station Name"]),
+    #                           (stations.iloc[c]["Station Name"], stations.iloc[a]["Station Name"])])
     
-    # Create an adjacency matrix from the graph
-    A = np.array(nx.attr_matrix(graph)[0])
+    # Create a self looped adjacency matrix from the data
+    #A = np.array(nx.attr_matrix(graph)[0])
+    #A = nx.to_numpy_matrix(graph)
+    dLength = len(station_coordinates)
+    A_hat = np.ones((dLength,dLength))
+    for i in range(dLength):
+        for j in range(dLength):
+            if i != j:
+                X = station_coordinates[i][0] - station_coordinates[j][0]
+                Y = station_coordinates[i][1] - station_coordinates[j][1]
+                H = (X*X + Y*Y) / 100000000
+                A_hat[i][j] = 1 / (math.sqrt(H))
+
 
     # Create a self-looped adjacency matrix from A
-    A_hat = A + np.identity(len(A))
+    #A_hat = A + np.identity(len(A))
 
     # Create a degree matrix from A_hat
     D = np.diag(np.sum(A_hat, axis=0))

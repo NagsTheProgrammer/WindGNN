@@ -1,3 +1,5 @@
+import torch.nn as nn
+
 class GCNGRUModel(nn.Module):
     def __init__(self, gcn_model, gru_model):
         super(GCNGRUModel, self).__init__()

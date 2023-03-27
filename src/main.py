@@ -5,7 +5,7 @@ from step4_gcn_model import *
 from step5_sequence_preparer import *
 from step6_gru_model import *
 from step7_gcn_gru_combined_model import *
-from step8_trainer import *
+# from step8_trainer import *
 
 if __name__ == "__main__":
     # Step 1a - Load data from both csv (measurements and coordinates)
@@ -14,9 +14,11 @@ if __name__ == "__main__":
 
     # Step 2 - Build distance graph
     adj_matrix = build_graph(df)
+    dLength = len(adj_matrix)
 
     # Step 3 - Select important features
-    attr_matrix = extract_features(df).to_numpy()
+    #attr_matrix = extract_features(df).to_numpy()
+    attr_matrix = np.array_split(extract_features(df), dLength)
 
     # Step 4 - Define GCN
 
@@ -41,7 +43,7 @@ if __name__ == "__main__":
 
     n_iters = 100 # arbitrarily chosen, one cycle of
     batch_size = 64 # arbitrarily chosen
-    train_loader, test_loader = generate_sequences(df, GCN, batch_size)
+    #train_loader, test_loader = generate_sequences(df, model, batch_size)
 
     # Step 6 - Train GRU
 
