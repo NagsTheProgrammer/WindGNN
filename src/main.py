@@ -9,7 +9,7 @@ from step5_gcn_gru_combined_model import *
 if __name__ == "__main__":
     # Step 1a - Load data from both csv (measurements and coordinates)
     # Step 1b - Preprocess data
-    df = load_and_process_wind_speed_dataset()
+    df, data_min, data_max = load_and_process_wind_speed_dataset()
 
     # Step 2 - Build distance graph
     adj_matrix = build_graph(df)
@@ -79,9 +79,9 @@ if __name__ == "__main__":
 
     for epoch in range(epochs): # Repeating for every epoch
         for i, (batch_x, batch_y) in enumerate(train_loader): # for each batch in the train_loader
-            
             outputs = model(adj_matrix, batch_x)
-
+            # sh = outputs.shape
+            # o = outputs.detach().numpy()
             # clear the gradients
             optimizer.zero_grad()
             # loss
