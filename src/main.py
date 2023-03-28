@@ -13,6 +13,7 @@ if __name__ == "__main__":
 
     # Step 2 - Build distance graph
     adj_matrix = build_graph(df)
+    adj_matrix = torch.tensor(adj_matrix).float()
     dLength = len(adj_matrix)
 
     # Step 3 - Select important features
@@ -36,7 +37,7 @@ if __name__ == "__main__":
     # ground_truth = attr_matrix
 
     # Step 4,5 - Defining Two-Layer GCN
-    model = GCN_GRU(input_dim=13, hidden_dim=13, output_dim=13, gru_hidden_dim=13) # Pretty sure all our dimensions are the same, need to confirm
+    model = GCN_GRU(input_dim=13, hidden_dim=13, output_dim=13, gru_input=91, gru_hidden_dim=7)
 
     # Using GPU if available
     if torch.cuda.is_available():
@@ -60,7 +61,7 @@ if __name__ == "__main__":
     # sequence length - [12, 24, 48, 168]
 
     learning_rate = 0.001
-    epochs = 25 # number of times the model sees the complete dataset
+    epochs = 100 # number of times the model sees the complete dataset
 
     # *** From previous iteration where GRU and GCN were separate models
     # gru_model = GRUModel(input_size, hidden_size, num_layers, output_size)
@@ -75,20 +76,23 @@ if __name__ == "__main__":
 
     loss_list = []
     iter = 0
+
     for epoch in range(epochs): # Repeating for every epoch
         for i, (batch_x, batch_y) in enumerate(train_loader): # for each batch in the train_loader
+            
             outputs = model(adj_matrix, batch_x)
+
             # clear the gradients
             optimizer.zero_grad()
             # loss
-            # print(outputs.shape, batch_y.shape)
             loss = lossFunction(outputs, batch_y)
             # backpropagation
             loss.backward()
             optimizer.step()
             iter += 1
             if iter % 100 == 0:
-                print("iter: %d, loss: %1.5f" % (iter, loss.item()))
+                print("epoch: %d, iter: %d, loss: %1.5f" % (epoch, iter, loss.item()))
+        iter = 0
 
     # Step 7 - Printing Results
 

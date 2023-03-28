@@ -73,11 +73,19 @@ def generate_sequences(df, batch_size):
     # Getting loaders and epochs
     train_dataset = TensorDataset(train_sequences, train_labels)
     test_dataset = TensorDataset(test_sequences, test_labels)
-    train_loader = torch.utils.data.DataLoader(dataset=train_sequences,
-                                               batch_size=batch_size,
+
+    # train_loader = torch.utils.data.DataLoader(dataset=train_sequences,
+    #                                            batch_size=batch_size,
+    #                                            shuffle=False)
+    # test_loader = torch.utils.data.DataLoader(dataset=test_sequences,
+    #                                           batch_size=batch_size,
+    #                                           shuffle=False)
+
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                               batch_size=1,
                                                shuffle=False)
-    test_loader = torch.utils.data.DataLoader(dataset=test_sequences,
-                                              batch_size=batch_size,
+    test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
+                                              batch_size=1,
                                               shuffle=False)
 
     return train_loader, test_loader
