@@ -18,7 +18,10 @@ if __name__ == "__main__":
     # Step 3 - Select important features
     attr_matrix = extract_features(df)
     # attr_matrix = np.array_split(extract_features(df), dLength)
-    train_loader, test_loader = generate_sequences(attr_matrix)
+
+    # Step 6 - generate train / test data sequences
+    batch_size = 168
+    train_loader, test_loader = generate_sequences(attr_matrix, batch_size)
 
     # Step 4 - Define GCN
 
@@ -41,9 +44,9 @@ if __name__ == "__main__":
 
     # Step 5 - Generate Train / Test Data Sequences
 
-    n_iters = 100 # arbitrarily chosen, one cycle of
-    batch_size = 64 # arbitrarily chosen
-    train_loader, test_loader = generate_sequences(df, model, batch_size)
+    # n_iters = 100 # arbitrarily chosen, one cycle of
+    # batch_size = 64 # arbitrarily chosen
+    # train_loader, test_loader = generate_sequences(df, model, batch_size)
 
     # Step 6 - Train GRU
 
@@ -64,7 +67,7 @@ if __name__ == "__main__":
 
     # Defining Loss Function
     # lossFunction = nn.L1loss() # Mean Absolute Error - used when data has significant outliers from mean value
-    lossFunction = nn.MSEloss() # Mean Squared Error - default for regression problems
+    lossFunction = nn.MSELoss() # Mean Squared Error - default for regression problems
 
     # Defining optimizer
     # (params, lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False, *, foreach=None, maximize=False, capturable=False, differentiable=False, fused=None)

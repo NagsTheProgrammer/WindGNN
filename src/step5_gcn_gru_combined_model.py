@@ -1,6 +1,7 @@
 import torch.nn as nn
 
-from src.step4_gcn_layer_model import GraphConvLayer
+# from src.step4_gcn_layer_model import GraphConvLayer
+from step4_gcn_layer_model import GraphConvLayer
 
 
 class GCN_GRU(nn.Module):
