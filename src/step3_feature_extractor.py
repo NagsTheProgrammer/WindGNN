@@ -18,4 +18,4 @@ def extract_features(df):
         'Wind Dir. 10 m Avg. (°)'
     ]
 
-    return df[relevant_features]
+    return df[relevant_features].to_numpy()

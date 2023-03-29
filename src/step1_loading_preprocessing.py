@@ -55,7 +55,11 @@ def load_and_process_wind_speed_dataset(verbose: bool = True):
     # add coordinates
     full_df = full_df.merge(coordinates_df, on='Station Name')
 
-    # normalize data - I don't think we need to normalize at this point... commenting out for now
+    # normalize data, retain min and max for wind speed
+    wind_data = torch.tensor(full_df['Wind Speed 10 m Avg. (km/h)'].values)
+    wind_data_min = torch.min(wind_data, dim=0, keepdim=True)[0].numpy()
+    wind_data_max = torch.max(wind_data, dim=0, keepdim=True)[0].numpy()
+
     numerical_data = torch.tensor(full_df[numerical_features].values)
     numerical_data_min = torch.min(numerical_data, dim=0, keepdim=True)[0]
     numerical_data_max = torch.max(numerical_data, dim=0, keepdim=True)[0]
@@ -65,4 +69,4 @@ def load_and_process_wind_speed_dataset(verbose: bool = True):
     if verbose:
         print("Loaded and preprocessed data. Shape:", full_df.shape)
 
-    return full_df, numerical_data_min, numerical_data_max
+    return full_df, wind_data_min, wind_data_max

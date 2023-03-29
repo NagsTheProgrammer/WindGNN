@@ -18,11 +18,10 @@ class GCN_GRU(nn.Module):
 
         # Perform the second graph convolutional layer. View() combines the last two dimensions for the GRU layer
         hidden2 = self.conv2(adj_matrix, hidden1).view(1, 168, 91)
-        h2 = hidden2.detach().numpy()
+        
         # Perform the GRU layer
         gru_out, _ = self.gru(hidden2)
-        go = gru_out.detach().numpy()
+
         # Hyperbolic Tangent activation function
         out = gru_out.squeeze(0)
-        o = out.detach().numpy()
         return out

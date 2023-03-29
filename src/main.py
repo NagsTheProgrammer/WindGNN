@@ -7,22 +7,27 @@ from step5_gcn_gru_combined_model import *
 # from step8_trainer import *
 
 if __name__ == "__main__":
+    # Path to save best model to
+    PATH = "./wind_gnn.pth"
+    
+    # Using GPU if available
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    
     # Step 1a - Load data from both csv (measurements and coordinates)
     # Step 1b - Preprocess data
-    df, data_min, data_max = load_and_process_wind_speed_dataset()
+    df, wind_min, wind_max = load_and_process_wind_speed_dataset()
 
     # Step 2 - Build distance graph
     adj_matrix = build_graph(df)
     adj_matrix = torch.tensor(adj_matrix).float()
-    dLength = len(adj_matrix)
+    adj_matrix = adj_matrix.to(device)
 
     # Step 3 - Select important features
     attr_matrix = extract_features(df)
-    # attr_matrix = np.array_split(extract_features(df), dLength)
 
     # Step 6 - generate train / test data sequences
     batch_size = 168
-    train_loader, test_loader = generate_sequences(attr_matrix, batch_size)
+    train_loader, test_loader = generate_sequences(attr_matrix, batch_size, device)
 
     # Step 4 - Define GCN
 
@@ -38,10 +43,9 @@ if __name__ == "__main__":
 
     # Step 4,5 - Defining Two-Layer GCN
     model = GCN_GRU(input_dim=13, hidden_dim=13, output_dim=13, gru_input=91, gru_hidden_dim=7)
-
-    # Using GPU if available
-    if torch.cuda.is_available():
-        model.cuda()
+    model = model.to(device)
+    
+    
 
     # Step 5 - Generate Train / Test Data Sequences
 
@@ -75,25 +79,58 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     loss_list = []
+    test_loss_list = []
     iter = 0
-
+    
+    best_loss = 0.03
+    patience = 0
+    
     for epoch in range(epochs): # Repeating for every epoch
         for i, (batch_x, batch_y) in enumerate(train_loader): # for each batch in the train_loader
             outputs = model(adj_matrix, batch_x)
-            # sh = outputs.shape
-            # o = outputs.detach().numpy()
+            
             # clear the gradients
             optimizer.zero_grad()
+
             # loss
             loss = lossFunction(outputs, batch_y)
+            out_inv_norm = outputs.detach().cpu().numpy() * (wind_max - wind_min) + wind_min
+            lab_inv_norm = batch_y.detach().cpu().numpy() * (wind_max - wind_min) + wind_min
+            diff = abs(lab_inv_norm[0] - out_inv_norm)
+            loss_list.append(diff)
+            
             # backpropagation
             loss.backward()
             optimizer.step()
             iter += 1
+
+            if loss.item() < best_loss:
+                torch.save(model.state_dict(), PATH)
+                best_loss = loss.item()
+                patience = 0
+
+
             if iter % 100 == 0:
-                print("epoch: %d, iter: %d, loss: %1.5f" % (epoch, iter, loss.item()))
+                print("epoch: %d, iter: %d, patience: %d, loss: %1.5f" % (epoch, iter, patience, loss.item()))
         iter = 0
+        patience += 1
+        if patience > 10:
+            break
+    
+    model = GCN_GRU(input_dim=13, hidden_dim=13, output_dim=13, gru_input=91, gru_hidden_dim=7)
+    model = model.to(device)
+    model.load_state_dict(torch.load(PATH))
+    with torch.no_grad():
+        for (batch_x, batch_y) in test_loader:
+            outputs = model(adj_matrix, batch_x)
+            test_out_inv_norm = outputs.detach().cpu().numpy() * (wind_max - wind_min) + wind_min
+            test_lab_inv_norm = batch_y.detach().cpu().numpy() * (wind_max - wind_min) + wind_min
+            test_diff = abs(lab_inv_norm[0] - out_inv_norm)
+            test_loss_list.append(test_diff)
 
     # Step 7 - Printing Results
+    ll = loss_list
+    tll = test_loss_list
+    stuff = 0 # put breakpoint here if you want to examine the data
 
     #  ***

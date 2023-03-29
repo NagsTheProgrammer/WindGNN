@@ -17,11 +17,11 @@ def __create_sequences(data, seq_length):
 
     return np.array(xs), np.array(ys)
 
-def generate_sequences(df, batch_size):
+def generate_sequences(df, batch_size, device):
     # plan, take in df, refactor into samples of 168 hourly timesteps in 3-dim tensor (x, y, z) = [timestep, station, feature]
     # df before looks like 2-dim matrix (x, y) = [feature, timestep] *** includes all stations
 
-    attr_matrix = df.to_numpy()
+    attr_matrix = df
     # attr_matrix = np.array_split(df, 7) # splitting df into each station *** works for small dataset, may not work for larger dataset as total timesteps for each station is unbalanced
     # dLength = len(attr_matrix[0])
 
@@ -37,8 +37,7 @@ def generate_sequences(df, batch_size):
         else:
             attr_matrix_transpose = np.concatenate((attr_matrix_transpose, station_matrix), axis = 1)
         # attr_matrix_transpose = np.append(attr_matrix_transpose, np.transpose(attr_matrix[(attr_matrix[:, 0] == station)])) # finds matrix subset with single station, transposes, and appends to attr_matrix_transpose
-
-    print(attr_matrix_transpose.shape)
+    
     # if above didn't work, this should
     # attr_matrix_transpose = []
     # for a in attr_matrix:
@@ -65,10 +64,10 @@ def generate_sequences(df, batch_size):
     test_sequences, test_labels = __create_sequences(test_df, seq_length)
 
     # Convert sequences to tensors
-    train_sequences = torch.tensor(train_sequences.tolist(), dtype=torch.float)
-    train_labels = torch.tensor(train_labels.tolist(), dtype=torch.float)
-    test_sequences = torch.tensor(test_sequences.tolist(), dtype=torch.float)
-    test_labels = torch.tensor(test_labels.tolist(), dtype=torch.float)
+    train_sequences = torch.tensor(train_sequences.tolist(), dtype=torch.float).to(device)
+    train_labels = torch.tensor(train_labels.tolist(), dtype=torch.float).to(device)
+    test_sequences = torch.tensor(test_sequences.tolist(), dtype=torch.float).to(device)
+    test_labels = torch.tensor(test_labels.tolist(), dtype=torch.float).to(device)
 
     # Getting loaders and epochs
     train_dataset = TensorDataset(train_sequences, train_labels)
