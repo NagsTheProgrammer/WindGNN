@@ -11,7 +11,11 @@ def __create_sequences(data, seq_length):
 
     for i in range(r):
         x = data[( i*seq_length ):( ( i + 1 ) * seq_length ), :, 2:15]
-        y = data[( i*seq_length + 1 ):( ( i + 1 ) * seq_length + 1 ), :, 13]
+        y1 = data[( i*seq_length + 1 ):( ( i + 1 ) * seq_length + 1 ), :, 13]
+        y2 = data[( i*seq_length + 2 ):( ( i + 1 ) * seq_length + 2 ), :, 13]
+        y3 = data[( i*seq_length + 3 ):( ( i + 1 ) * seq_length + 3 ), :, 13]
+        ym = np.concatenate((y1, y2), axis=1)
+        y = np.concatenate((ym, y3), axis=1)
         xs.append(x)
         ys.append(y)
 
@@ -22,6 +26,10 @@ def generate_sequences(df, batch_size, device):
     # df before looks like 2-dim matrix (x, y) = [feature, timestep] *** includes all stations
 
     attr_matrix = df
+    num_stations = 0
+    done = df.shape
+    dtwo = df.shape[0]
+    num_attr = df.shape[1] - 2
     # attr_matrix = np.array_split(df, 7) # splitting df into each station *** works for small dataset, may not work for larger dataset as total timesteps for each station is unbalanced
     # dLength = len(attr_matrix[0])
 
@@ -29,6 +37,7 @@ def generate_sequences(df, batch_size, device):
     initial = True
     stations = np.unique(attr_matrix[:, 0]) # get list of unique station values
     for station in stations:
+        num_stations += 1
         station_matrix = attr_matrix[np.where(attr_matrix[:,0] == station)]
         station_matrix = station_matrix.reshape((station_matrix.shape[0], 1, station_matrix.shape[1]))
         if initial:
@@ -87,4 +96,4 @@ def generate_sequences(df, batch_size, device):
                                               batch_size=1,
                                               shuffle=False)
 
-    return train_loader, test_loader
+    return train_loader, test_loader, num_attr, num_stations

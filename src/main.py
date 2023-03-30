@@ -5,6 +5,7 @@ from step4_gcn_layer_model import *
 from step6_sequence_preparer import *
 from step5_gcn_gru_combined_model import *
 # from step8_trainer import *
+import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
     # Path to save best model to
@@ -27,7 +28,7 @@ if __name__ == "__main__":
 
     # Step 6 - generate train / test data sequences
     batch_size = 168
-    train_loader, test_loader = generate_sequences(attr_matrix, batch_size, device)
+    train_loader, test_loader, num_attr, num_stations = generate_sequences(attr_matrix, batch_size, device)
 
     # Step 4 - Define GCN
 
@@ -42,7 +43,9 @@ if __name__ == "__main__":
     # ground_truth = attr_matrix
 
     # Step 4,5 - Defining Two-Layer GCN
-    model = GCN_GRU(input_dim=13, hidden_dim=13, output_dim=13, gru_input=91, gru_hidden_dim=7)
+    attr_station_flat = num_attr * num_stations
+    num_predictions = num_stations * 3
+    model = GCN_GRU(input_dim=num_attr, hidden_dim=num_attr, output_dim=num_attr, gru_input=attr_station_flat, gru_hidden_dim=num_predictions)
     model = model.to(device)
     
     
@@ -117,7 +120,7 @@ if __name__ == "__main__":
         if patience > 10:
             break
     
-    model = GCN_GRU(input_dim=13, hidden_dim=13, output_dim=13, gru_input=91, gru_hidden_dim=7)
+    model = GCN_GRU(input_dim=num_attr, hidden_dim=num_attr, output_dim=num_attr, gru_input=attr_station_flat, gru_hidden_dim=num_predictions)
     model = model.to(device)
     model.load_state_dict(torch.load(PATH))
     with torch.no_grad():
@@ -131,6 +134,17 @@ if __name__ == "__main__":
     # Step 7 - Printing Results
     ll = loss_list
     tll = test_loss_list
-    stuff = 0 # put breakpoint here if you want to examine the data
+    
+    plot_data = []
+    n = 0
 
+    for sequence in tll:
+        row = sequence[167]
+        plt.plot(row[:])
+        plot_data.append(row)
+    
+    
+    plt.show()
+
+    stuff = 0 # put breakpoint here if you want to examine the data
     #  ***
