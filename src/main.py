@@ -6,6 +6,7 @@ from step6_sequence_preparer import *
 from step5_gcn_gru_combined_model import *
 # from step8_trainer import *
 import matplotlib.pyplot as plt
+import pandas as pd
 
 if __name__ == "__main__":
     # Path to save best model to
@@ -27,6 +28,7 @@ if __name__ == "__main__":
     attr_matrix = extract_features(df)
 
     # Step 6 - generate train / test data sequences
+    stations = np.unique(attr_matrix[:, 0])
     batch_size = 168
     train_loader, test_loader, num_attr, num_stations = generate_sequences(attr_matrix, batch_size, device)
 
@@ -128,7 +130,7 @@ if __name__ == "__main__":
             outputs = model(adj_matrix, batch_x)
             test_out_inv_norm = outputs.detach().cpu().numpy() * (wind_max - wind_min) + wind_min
             test_lab_inv_norm = batch_y.detach().cpu().numpy() * (wind_max - wind_min) + wind_min
-            test_diff = abs(lab_inv_norm[0] - out_inv_norm)
+            test_diff = abs(test_lab_inv_norm[0] - test_out_inv_norm)
             test_loss_list.append(test_diff)
 
     # Step 7 - Printing Results
@@ -138,13 +140,40 @@ if __name__ == "__main__":
     plot_data = []
     n = 0
 
-    for sequence in tll:
-        row = sequence[167]
-        plt.plot(row[:])
-        plot_data.append(row)
-    
-    
+    one_hour = [l[-1, 0:7] for l in tll]
+    two_hour = [l[-1, 7:14] for l in tll]
+    three_hour = [l[-1, 14:21] for l in tll]
+
+    one_hr_df = pd.DataFrame(one_hour, columns = stations)
+    two_hr_df = pd.DataFrame(two_hour, columns = stations)
+    thr_hr_df = pd.DataFrame(three_hour, columns = stations)
+
+    print(one_hr_df)
+
+    fig1, ax1 = plt.subplots()
+    ax1.boxplot(one_hr_df)
+    plt.xticks([1,2,3,4,5,6,7], stations, rotation=45)
+    plt.ylabel('Wind Speed (km/hr)')
+    plt.xlabel('Weather Station')
+    plt.title("Absolute Error for One-Hour Prediction")
     plt.show()
+
+    fig2, ax2 = plt.subplots()
+    ax2.boxplot(two_hr_df)
+    plt.xticks([1,2,3,4,5,6,7], stations, rotation=45)
+    plt.ylabel('Wind speed (km/hr)')
+    plt.xlabel('Weather Station')
+    plt.title("Absolute Error for Two-Hour Prediction")
+    plt.show()
+
+    fig3, ax3 = plt.subplots()
+    ax3.boxplot(thr_hr_df)
+    plt.xticks([1,2,3,4,5,6,7], stations, rotation=45)
+    plt.ylabel('Wind speed (km/hr)')
+    plt.xlabel('Weather Station')
+    plt.title("Absolute Error for Three-Hour Prediction")
+    plt.show()
+
 
     stuff = 0 # put breakpoint here if you want to examine the data
     #  ***
