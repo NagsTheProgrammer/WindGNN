@@ -7,6 +7,7 @@ from step5_gcn_gru_combined_model import *
 # from step8_trainer import *
 import matplotlib.pyplot as plt
 import pandas as pd
+from sklearn.metrics import mean_squared_error
 
 if __name__ == "__main__":
     # Path to save best model to
@@ -85,6 +86,8 @@ if __name__ == "__main__":
 
     loss_list = []
     test_loss_list = []
+    predictions = []
+    truth = []
     iter = 0
     
     best_loss = 0.03
@@ -132,23 +135,70 @@ if __name__ == "__main__":
             test_lab_inv_norm = batch_y.detach().cpu().numpy() * (wind_max - wind_min) + wind_min
             test_diff = abs(test_lab_inv_norm[0] - test_out_inv_norm)
             test_loss_list.append(test_diff)
+            predictions.append(test_out_inv_norm)
+            truth.append(test_lab_inv_norm)
 
     # Step 7 - Printing Results
-    ll = loss_list
-    tll = test_loss_list
-    
-    plot_data = []
-    n = 0
+    stats1 = []
+    stats2 = []
+    stats3 = []
 
-    one_hour = [l[-1, 0:7] for l in tll]
-    two_hour = [l[-1, 7:14] for l in tll]
-    three_hour = [l[-1, 14:21] for l in tll]
+    for i in range(7):
+        one_hour_prediction = [l[-1, i] for l in predictions]
+        one_hour_truth = [l[0,-1, i] for l in truth]
+        rms1 = mean_squared_error(one_hour_truth, one_hour_prediction, squared=False)
+
+        one_hour_error = [l[-1, i] for l in test_loss_list]
+        mae1 = np.average(np.array(one_hour_error))
+
+        acc1 = np.array(one_hour_error)/np.array(one_hour_truth)
+        acc_avg1 = np.average(acc1)
+        acc_std1 = np.std(acc1)
+
+        stats1.append([rms1, mae1, acc_avg1, acc_std1])
+        ###
+        two_hour_prediction = [l[-1, i+7] for l in predictions]
+        two_hour_truth = [l[0,-1, i+7] for l in truth]
+        rms2 = mean_squared_error(two_hour_truth, two_hour_prediction, squared=False)
+
+        two_hour_error = [l[-1, i+7] for l in test_loss_list]
+        mae2 = np.average(np.array(two_hour_error))
+
+        acc2 = np.array(two_hour_error)/np.array(two_hour_truth)
+        acc_avg2 = np.average(acc2)
+        acc_std2 = np.std(acc2)
+
+        stats2.append([rms2, mae2, acc_avg2, acc_std2])
+        ###
+        three_hour_prediction =[l[-1, i+14] for l in predictions]
+        three_hour_truth = [l[0,-1, i+14] for l in truth]
+        rms3 = mean_squared_error(three_hour_truth, three_hour_prediction, squared=False)
+
+        three_hour_error = [l[-1, i+14] for l in test_loss_list]
+        mae3 = np.average(np.array(three_hour_error))
+
+        acc3 = np.array(three_hour_error)/np.array(three_hour_truth)
+        acc_avg3 = np.average(acc3)
+        acc_std3 = np.std(acc3)
+
+        stats3.append([rms3, mae3, acc_avg3, acc_std3])
+    
+    col_labels = ['RMSE','MAE','Average Accuracy','Accuracy Deviation']
+    one_hour_stats_df = pd.DataFrame(stats1, columns = col_labels, index = stations)
+    two_hour_stats_df = pd.DataFrame(stats2, columns = col_labels, index = stations)
+    three_hour_stats_df = pd. DataFrame(stats3, columns = col_labels, index = stations)
+
+    print(one_hour_stats_df)
+    print(two_hour_stats_df)
+    print(three_hour_stats_df)
+    
+    one_hour = [l[-1, 0:7] for l in test_loss_list]
+    two_hour = [l[-1, 7:14] for l in test_loss_list]
+    three_hour = [l[-1, 14:21] for l in test_loss_list]
 
     one_hr_df = pd.DataFrame(one_hour, columns = stations)
     two_hr_df = pd.DataFrame(two_hour, columns = stations)
     thr_hr_df = pd.DataFrame(three_hour, columns = stations)
-
-    print(one_hr_df)
 
     fig1, ax1 = plt.subplots()
     ax1.boxplot(one_hr_df)
@@ -174,6 +224,9 @@ if __name__ == "__main__":
     plt.title("Absolute Error for Three-Hour Prediction")
     plt.show()
 
+    one_hour_stats_df.to_csv('one_hour.csv', index = True)
+    two_hour_stats_df.to_csv('two_hour.csv', index = True)
+    three_hour_stats_df.to_csv('three_hour.csv', index = True)
 
     stuff = 0 # put breakpoint here if you want to examine the data
     #  ***
