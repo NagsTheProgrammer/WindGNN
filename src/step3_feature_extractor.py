@@ -1,5 +1,5 @@
 def extract_features(df):
-    # Select the relevant features
+    # Selects the relevant features and returns them in a numpy format
     relevant_features = [
         "Station Name",
         "Date (Local Standard Time)",

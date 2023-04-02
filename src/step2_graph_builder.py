@@ -1,8 +1,7 @@
-from scipy.spatial import Delaunay
-import networkx as nx
 import math
-from scipy.linalg import fractional_matrix_power
+
 import numpy as np
+from scipy.linalg import fractional_matrix_power
 
 
 # Method to convert spherical latitude and longitude into planar mercator coordinates

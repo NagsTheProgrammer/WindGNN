@@ -1,11 +1,8 @@
 # 230227 - ENEL 645 Final Project - dataset_aggregator.py - Group 27
 
-import numpy as np
-import pyomo
-from pyomo.environ import*
-from pyomo.opt import SolverFactory
 import pandas as pd
-import math
+from pyomo.environ import *
+
 
 def main():
     df_2020_1 = pd.read_csv(r'../../data/ACISHourlyData-20200101-20200630-PID181534737.csv', encoding='latin1')
@@ -17,6 +14,7 @@ def main():
 
     df_2020_2022 = pd.concat([df_2020_1, df_2020_2, df_2021_1, df_2021_2, df_2022_1, df_2022_2])
     df_2020_2022.to_csv(r'../../data/ACISHourlyData-20200101-20221231.csv')
+
 
 if __name__ == "__main__":
     main()
