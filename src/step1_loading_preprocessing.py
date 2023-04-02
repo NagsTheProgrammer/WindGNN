@@ -6,12 +6,12 @@ def load_and_process_wind_speed_dataset(verbose: bool = True):
     # read in the csv file
 
     # this code probably works on Linux... doesn't work on my Alienware... uncomment this if you need to work
-    coordinates_df = pd.read_csv(r'../data/ACISStationCoordinates.csv')
-    full_df = pd.read_csv(r'../data/ACISHourlyData-20200101-20221231.csv')
+    # coordinates_df = pd.read_csv(r'../data/ACISStationCoordinates.csv')
+    # full_df = pd.read_csv(r'../data/ACISHourlyData-20200101-20221231.csv')
 
     # this code works on my Alienware... probably doesn't work on Linux... comment this out if you need to work
-    #coordinates_df = pd.read_csv(r'data/ACISStationCoordinates.csv')
-    #full_df = pd.read_csv(r'data/ACISHourlyData-20200101-20221231.csv')
+    coordinates_df = pd.read_csv(r'data/ACISStationCoordinates.csv')
+    full_df = pd.read_csv(r'data/ACISHourlyData-20200101-20221231.csv')
 
     # remove useless fields
     full_df = full_df.drop(columns=["Unnamed: 0",
