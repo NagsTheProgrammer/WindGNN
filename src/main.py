@@ -9,14 +9,17 @@ from step4_sequence_preparer import *
 
 if __name__ == "__main__":
     # Path to save best model to
-    PATH = "./wind_gnn.pth"
+    PATH = "./wind_gnn_34.pth"
 
     # Using GPU if available
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     # Step 1a - Load data from both csv (measurements and coordinates)
     # Step 1b - Preprocess data
-    df, wind_min, wind_max = load_and_process_wind_speed_dataset()
+    
+    # Set large to True if you want to use the full dataset
+    large = False
+    df, wind_min, wind_max = load_and_process_wind_speed_dataset(dataset_size=large)
 
     # Step 2 - Build distance graph
     adj_matrix = build_graph(df)
@@ -28,57 +31,24 @@ if __name__ == "__main__":
 
     # Step 4 - generate train / test data sequences
     stations = np.unique(attr_matrix[:, 0])
+    num_stations = len(stations)
     batch_size = 168
     train_loader, test_loader, num_attr, num_stations = generate_sequences(attr_matrix, batch_size, device)
 
-    # Step 5 - Define GCN
-
-    # Defining Adjacency Matrix, Attribute Matrix, Ground Truth
-    # adj_matrix -> manually derived
-    # attr_matrix -> output from feature extractor
-    # ground_truth -> basically y_train(?)
-    # *** figure out where to get these from
-    # adj_matrix = torch.tensor([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
-    # attr_matrix = torch.randn(3, 4)
-    # ground_truth = torch.randn(3, 2)
-    # ground_truth = attr_matrix
-
-    # Step 6 - Defining Two-Layer GCN
+    # Step 5 - Defining Two-Layer GCN with GRU
     attr_station_flat = num_attr * num_stations
     num_predictions = num_stations * 3
     model = GCN_GRU(input_dim=num_attr, hidden_dim=num_attr, output_dim=num_attr, gru_input=attr_station_flat,
                     gru_hidden_dim=num_predictions)
     model = model.to(device)
 
-    # Step 7 - Generate Train / Test Data Sequences
-
-    # n_iters = 100 # arbitrarily chosen, one cycle of
-    # batch_size = 64 # arbitrarily chosen
-    # train_loader, test_loader = generate_sequences(df, model, batch_size)
-
-    # Step 8 - Train GRU
-
-    # hyperparameters to explore:
-    # dropout - [0.0, 1.1]
-    # learning rate - scheduling(?) - [0.0001, 0.1]
-    # epochs - early stopping(?) - [10, 300]
-    # hidden state size -  [2, 256]
-    # number of hidden layers - [1, 4]
-    # batch size - [4, 8, 16, 32, 64, 128, 256]
-    # sequence length - [12, 24, 48, 168]
-
     learning_rate = 0.001
     epochs = 100  # number of times the model sees the complete dataset
 
-    # *** From previous iteration where GRU and GCN were separate models
-    # gru_model = GRUModel(input_size, hidden_size, num_layers, output_size)
-
     # Defining Loss Function
-    # lossFunction = nn.L1loss() # Mean Absolute Error - used when data has significant outliers from mean value
     lossFunction = nn.MSELoss()  # Mean Squared Error - default for regression problems
 
     # Defining optimizer
-    # (params, lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False, *, foreach=None, maximize=False, capturable=False, differentiable=False, fused=None)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     loss_list = []
@@ -90,6 +60,7 @@ if __name__ == "__main__":
     best_loss = 0.03
     patience = 0
 
+    # Training loop
     for epoch in range(epochs):  # Repeating for every epoch
         for i, (batch_x, batch_y) in enumerate(train_loader):  # for each batch in the train_loader
             outputs = model(adj_matrix, batch_x)
@@ -120,7 +91,8 @@ if __name__ == "__main__":
         patience += 1
         if patience > 10:
             break
-
+    
+    # Testing loop
     model = GCN_GRU(input_dim=num_attr, hidden_dim=num_attr, output_dim=num_attr, gru_input=attr_station_flat,
                     gru_hidden_dim=num_predictions)
     model = model.to(device)
@@ -140,7 +112,7 @@ if __name__ == "__main__":
     stats2 = []
     stats3 = []
 
-    for i in range(7):
+    for i in range(num_stations):
         one_hour_prediction = [l[-1, i] for l in predictions]
         one_hour_truth = [l[0, -1, i] for l in truth]
         rms1 = mean_squared_error(one_hour_truth, one_hour_prediction, squared=False)
@@ -148,33 +120,37 @@ if __name__ == "__main__":
         one_hour_error = [l[-1, i] for l in test_loss_list]
         mae1 = np.average(np.array(one_hour_error))
 
-        acc1 = np.array(one_hour_error) / np.array(one_hour_truth)
+        acc1 = 1 - np.array(one_hour_error) / np.array(one_hour_truth)
         acc_avg1 = np.average(acc1)
         acc_std1 = np.std(acc1)
 
         stats1.append([rms1, mae1, acc_avg1, acc_std1])
         ###
-        two_hour_prediction = [l[-1, i + 7] for l in predictions]
-        two_hour_truth = [l[0, -1, i + 7] for l in truth]
+        ###
+        ###
+        two_hour_prediction = [l[-1, i + num_stations] for l in predictions]
+        two_hour_truth = [l[0, -1, i + num_stations] for l in truth]
         rms2 = mean_squared_error(two_hour_truth, two_hour_prediction, squared=False)
 
-        two_hour_error = [l[-1, i + 7] for l in test_loss_list]
+        two_hour_error = [l[-1, i + num_stations] for l in test_loss_list]
         mae2 = np.average(np.array(two_hour_error))
 
-        acc2 = np.array(two_hour_error) / np.array(two_hour_truth)
+        acc2 = 1 - np.array(two_hour_error) / np.array(two_hour_truth)
         acc_avg2 = np.average(acc2)
         acc_std2 = np.std(acc2)
 
         stats2.append([rms2, mae2, acc_avg2, acc_std2])
         ###
-        three_hour_prediction = [l[-1, i + 14] for l in predictions]
-        three_hour_truth = [l[0, -1, i + 14] for l in truth]
+        ###
+        ###
+        three_hour_prediction = [l[-1, i + 2*num_stations] for l in predictions]
+        three_hour_truth = [l[0, -1, i + 2*num_stations] for l in truth]
         rms3 = mean_squared_error(three_hour_truth, three_hour_prediction, squared=False)
 
-        three_hour_error = [l[-1, i + 14] for l in test_loss_list]
+        three_hour_error = [l[-1, i + 2*num_stations] for l in test_loss_list]
         mae3 = np.average(np.array(three_hour_error))
 
-        acc3 = np.array(three_hour_error) / np.array(three_hour_truth)
+        acc3 = 1 - np.array(three_hour_error) / np.array(three_hour_truth)
         acc_avg3 = np.average(acc3)
         acc_std3 = np.std(acc3)
 
@@ -189,41 +165,44 @@ if __name__ == "__main__":
     print(two_hour_stats_df)
     print(three_hour_stats_df)
 
-    one_hour = [l[-1, 0:7] for l in test_loss_list]
-    two_hour = [l[-1, 7:14] for l in test_loss_list]
-    three_hour = [l[-1, 14:21] for l in test_loss_list]
+    one_hour = [l[-1, 0 : num_stations] for l in test_loss_list]
+    two_hour = [l[-1, num_stations : 2*num_stations] for l in test_loss_list]
+    three_hour = [l[-1, 2*num_stations : 3*num_stations] for l in test_loss_list]
 
     one_hr_df = pd.DataFrame(one_hour, columns=stations)
     two_hr_df = pd.DataFrame(two_hour, columns=stations)
     thr_hr_df = pd.DataFrame(three_hour, columns=stations)
+    
+    station_ticks = num_stations + 1
+    ticks = list(range(1,station_ticks))
 
     fig1, ax1 = plt.subplots()
     ax1.boxplot(one_hr_df)
-    plt.xticks([1, 2, 3, 4, 5, 6, 7], stations, rotation=45)
+    plt.xticks(ticks, stations, rotation=90)
     plt.ylabel('Wind Speed (km/hr)')
     plt.xlabel('Weather Station')
     plt.title("Absolute Error for One-Hour Prediction")
+    plt.subplots_adjust(left = 0.2, bottom = 0.3, right = 0.8, top = 0.9, wspace = 0.2, hspace = 0.2)
     plt.show()
 
     fig2, ax2 = plt.subplots()
     ax2.boxplot(two_hr_df)
-    plt.xticks([1, 2, 3, 4, 5, 6, 7], stations, rotation=45)
+    plt.xticks(ticks, stations, rotation=90)
     plt.ylabel('Wind speed (km/hr)')
     plt.xlabel('Weather Station')
     plt.title("Absolute Error for Two-Hour Prediction")
+    plt.subplots_adjust(left = 0.2, bottom = 0.3, right = 0.8, top = 0.9, wspace = 0.2, hspace = 0.2)
     plt.show()
 
     fig3, ax3 = plt.subplots()
     ax3.boxplot(thr_hr_df)
-    plt.xticks([1, 2, 3, 4, 5, 6, 7], stations, rotation=45)
+    plt.xticks(ticks, stations, rotation=90)
     plt.ylabel('Wind speed (km/hr)')
     plt.xlabel('Weather Station')
     plt.title("Absolute Error for Three-Hour Prediction")
+    plt.subplots_adjust(left = 0.2, bottom = 0.3, right = 0.8, top = 0.9, wspace = 0.2, hspace = 0.2)
     plt.show()
 
     one_hour_stats_df.to_csv('one_hour.csv', index=True)
     two_hour_stats_df.to_csv('two_hour.csv', index=True)
     three_hour_stats_df.to_csv('three_hour.csv', index=True)
-
-    stuff = 0  # put breakpoint here if you want to examine the data
-    #  ***

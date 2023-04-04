@@ -13,10 +13,11 @@ class GCN_GRU(nn.Module):
     def forward(self, adj_matrix, attr_matrix):
         # Perform the first graph convolutional layer
         num_seq = attr_matrix.size(1)
+        flat = attr_matrix.size(2) * 13
         hidden1 = self.conv1(adj_matrix, attr_matrix)
 
         # Perform the second graph convolutional layer. View() combines the last two dimensions for the GRU layer
-        hidden2 = self.conv2(adj_matrix, hidden1).view(1, num_seq, 91)
+        hidden2 = self.conv2(adj_matrix, hidden1).view(1, num_seq, flat)
 
         # Perform the GRU layer
         gru_out, _ = self.gru(hidden2)
