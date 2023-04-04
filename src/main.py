@@ -4,8 +4,8 @@ from sklearn.metrics import mean_squared_error
 from step1_loading_preprocessing import *
 from step2_graph_builder import *
 from step3_feature_extractor import *
-from step6_gcn_gru_combined_model import *
 from step4_sequence_preparer import *
+from step6_gcn_gru_combined_model import *
 
 if __name__ == "__main__":
     # Path to save best model to
@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
     # Step 1a - Load data from both csv (measurements and coordinates)
     # Step 1b - Preprocess data
-    
+
     # Set large to True if you want to use the full dataset
     large = False
     df, wind_min, wind_max = load_and_process_wind_speed_dataset(dataset_size=large)
@@ -91,7 +91,7 @@ if __name__ == "__main__":
         patience += 1
         if patience > 10:
             break
-    
+
     # Testing loop
     model = GCN_GRU(input_dim=num_attr, hidden_dim=num_attr, output_dim=num_attr, gru_input=attr_station_flat,
                     gru_hidden_dim=num_predictions)
@@ -143,11 +143,11 @@ if __name__ == "__main__":
         ###
         ###
         ###
-        three_hour_prediction = [l[-1, i + 2*num_stations] for l in predictions]
-        three_hour_truth = [l[0, -1, i + 2*num_stations] for l in truth]
+        three_hour_prediction = [l[-1, i + 2 * num_stations] for l in predictions]
+        three_hour_truth = [l[0, -1, i + 2 * num_stations] for l in truth]
         rms3 = mean_squared_error(three_hour_truth, three_hour_prediction, squared=False)
 
-        three_hour_error = [l[-1, i + 2*num_stations] for l in test_loss_list]
+        three_hour_error = [l[-1, i + 2 * num_stations] for l in test_loss_list]
         mae3 = np.average(np.array(three_hour_error))
 
         acc3 = 1 - np.array(three_hour_error) / np.array(three_hour_truth)
@@ -165,16 +165,16 @@ if __name__ == "__main__":
     print(two_hour_stats_df)
     print(three_hour_stats_df)
 
-    one_hour = [l[-1, 0 : num_stations] for l in test_loss_list]
-    two_hour = [l[-1, num_stations : 2*num_stations] for l in test_loss_list]
-    three_hour = [l[-1, 2*num_stations : 3*num_stations] for l in test_loss_list]
+    one_hour = [l[-1, 0: num_stations] for l in test_loss_list]
+    two_hour = [l[-1, num_stations: 2 * num_stations] for l in test_loss_list]
+    three_hour = [l[-1, 2 * num_stations: 3 * num_stations] for l in test_loss_list]
 
     one_hr_df = pd.DataFrame(one_hour, columns=stations)
     two_hr_df = pd.DataFrame(two_hour, columns=stations)
     thr_hr_df = pd.DataFrame(three_hour, columns=stations)
-    
+
     station_ticks = num_stations + 1
-    ticks = list(range(1,station_ticks))
+    ticks = list(range(1, station_ticks))
 
     fig1, ax1 = plt.subplots()
     ax1.boxplot(one_hr_df)
@@ -182,7 +182,7 @@ if __name__ == "__main__":
     plt.ylabel('Wind Speed (km/hr)')
     plt.xlabel('Weather Station')
     plt.title("Absolute Error for One-Hour Prediction")
-    plt.subplots_adjust(left = 0.2, bottom = 0.3, right = 0.8, top = 0.9, wspace = 0.2, hspace = 0.2)
+    plt.subplots_adjust(left=0.2, bottom=0.3, right=0.8, top=0.9, wspace=0.2, hspace=0.2)
     plt.show()
 
     fig2, ax2 = plt.subplots()
@@ -191,7 +191,7 @@ if __name__ == "__main__":
     plt.ylabel('Wind speed (km/hr)')
     plt.xlabel('Weather Station')
     plt.title("Absolute Error for Two-Hour Prediction")
-    plt.subplots_adjust(left = 0.2, bottom = 0.3, right = 0.8, top = 0.9, wspace = 0.2, hspace = 0.2)
+    plt.subplots_adjust(left=0.2, bottom=0.3, right=0.8, top=0.9, wspace=0.2, hspace=0.2)
     plt.show()
 
     fig3, ax3 = plt.subplots()
@@ -200,7 +200,7 @@ if __name__ == "__main__":
     plt.ylabel('Wind speed (km/hr)')
     plt.xlabel('Weather Station')
     plt.title("Absolute Error for Three-Hour Prediction")
-    plt.subplots_adjust(left = 0.2, bottom = 0.3, right = 0.8, top = 0.9, wspace = 0.2, hspace = 0.2)
+    plt.subplots_adjust(left=0.2, bottom=0.3, right=0.8, top=0.9, wspace=0.2, hspace=0.2)
     plt.show()
 
     one_hour_stats_df.to_csv('one_hour.csv', index=True)

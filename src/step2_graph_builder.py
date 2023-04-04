@@ -6,7 +6,7 @@ from scipy.linalg import fractional_matrix_power
 
 # Method to convert spherical latitude and longitude into planar mercator coordinates
 def __convert_wgs2utm(coords):
-    radius = 6378137 # radius of the model
+    radius = 6378137  # radius of the model
     for i in range(len(coords)):
         coords[i][0] = radius * math.log(math.tan(math.pi / 4 + coords[i][0] * math.pi / 360))
         coords[i][1] = radius * (coords[i][1] * math.pi / 180)

@@ -9,7 +9,6 @@ def load_and_process_wind_speed_dataset(verbose: bool = True, dataset_size: bool
         full_df = pd.read_csv(r'data/ACISHourlyData-20200101-20221231_large.csv')
     else:
         full_df = pd.read_csv(r'data/ACISHourlyData-20200101-20221231.csv')
-    
 
     # remove useless fields
     full_df = full_df.drop(columns=["Unnamed: 0",

@@ -1,7 +1,6 @@
 # 230227 - ENEL 645 Final Project - dataset_aggregator.py - Group 27
 
 import pandas as pd
-from pyomo.environ import *
 
 
 def main():
