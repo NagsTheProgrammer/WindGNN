@@ -9,13 +9,14 @@ from step4_sequence_preparer import *
 
 if __name__ == "__main__":
     # Path to save best model to
-    PATH = "./wind_gnn.pth"
+    PATH = "./wind_gnn_34.pth"
 
     # Using GPU if available
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     # Step 1a - Load data from both csv (measurements and coordinates)
     # Step 1b - Preprocess data
+    
     # Set large to True if you want to use the full dataset
     large = False
     df, wind_min, wind_max = load_and_process_wind_speed_dataset(dataset_size=large)
@@ -177,26 +178,29 @@ if __name__ == "__main__":
 
     fig1, ax1 = plt.subplots()
     ax1.boxplot(one_hr_df)
-    plt.xticks(ticks, stations, rotation=45)
+    plt.xticks(ticks, stations, rotation=90)
     plt.ylabel('Wind Speed (km/hr)')
     plt.xlabel('Weather Station')
     plt.title("Absolute Error for One-Hour Prediction")
+    plt.subplots_adjust(left = 0.2, bottom = 0.3, right = 0.8, top = 0.9, wspace = 0.2, hspace = 0.2)
     plt.show()
 
     fig2, ax2 = plt.subplots()
     ax2.boxplot(two_hr_df)
-    plt.xticks(ticks, stations, rotation=45)
+    plt.xticks(ticks, stations, rotation=90)
     plt.ylabel('Wind speed (km/hr)')
     plt.xlabel('Weather Station')
     plt.title("Absolute Error for Two-Hour Prediction")
+    plt.subplots_adjust(left = 0.2, bottom = 0.3, right = 0.8, top = 0.9, wspace = 0.2, hspace = 0.2)
     plt.show()
 
     fig3, ax3 = plt.subplots()
     ax3.boxplot(thr_hr_df)
-    plt.xticks(ticks, stations, rotation=45)
+    plt.xticks(ticks, stations, rotation=90)
     plt.ylabel('Wind speed (km/hr)')
     plt.xlabel('Weather Station')
     plt.title("Absolute Error for Three-Hour Prediction")
+    plt.subplots_adjust(left = 0.2, bottom = 0.3, right = 0.8, top = 0.9, wspace = 0.2, hspace = 0.2)
     plt.show()
 
     one_hour_stats_df.to_csv('one_hour.csv', index=True)
