@@ -2,7 +2,7 @@ import pandas as pd
 import torch
 
 
-def load_and_process_wind_speed_dataset(verbose: bool = True, dataset_size: bool = False):
+def load_and_process_wind_speed_dataset(verbose: bool = True, dataset_size: bool = True):
     # read in the csv file
     coordinates_df = pd.read_csv(r'data/ACISStationCoordinates.csv')
     if dataset_size:

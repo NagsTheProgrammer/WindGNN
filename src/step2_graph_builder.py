@@ -14,6 +14,13 @@ def __convert_wgs2utm(coords):
 
 
 def build_graph(df):
+    A_hat = build_A_hat(df)
+
+    A_star = build_A_star(A_hat)
+
+    return A_star
+
+def build_A_hat(df):
     # Extract unique station IDs and their coordinates
     stations = df[["Station Name", "Latitude", "Longitude"]].drop_duplicates()
     station_coordinates = stations[["Latitude", "Longitude"]].values
@@ -30,6 +37,9 @@ def build_graph(df):
                 H = (X * X + Y * Y) / 100000000
                 A_hat[i][j] = 1 / (math.sqrt(H))
 
+    return A_hat
+
+def build_A_star(A_hat):
     # Create a degree matrix from A_hat
     D = np.diag(np.sum(A_hat, axis=0))
 

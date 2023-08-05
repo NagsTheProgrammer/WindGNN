@@ -9,7 +9,7 @@ def __create_sequences(data, seq_length):
 
     r = int((len(data) - len(data) % seq_length) / seq_length)
 
-    for i in range(r):
+    for i in range(r-1):
         x = data[(i * seq_length):((i + 1) * seq_length), :, 2:15]
         y1 = data[(i * seq_length + 1):((i + 1) * seq_length + 1), :, 13]
         y2 = data[(i * seq_length + 2):((i + 1) * seq_length + 2), :, 13]
@@ -67,9 +67,9 @@ def generate_sequences(df, batch_size, device):
 
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                batch_size=1,
-                                               shuffle=False)
+                                               shuffle=True)
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                                               batch_size=1,
-                                              shuffle=False)
+                                              shuffle=True)
 
     return train_loader, test_loader, num_attr, num_stations

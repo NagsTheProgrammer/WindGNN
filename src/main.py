@@ -1,3 +1,4 @@
+import datetime
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error
 
@@ -6,22 +7,48 @@ from step2_graph_builder import *
 from step3_feature_extractor import *
 from step6_gcn_gru_combined_model import *
 from step4_sequence_preparer import *
+from step7_DQN import *
 
 if __name__ == "__main__":
+    
     # Path to save best model to
     PATH = "./wind_gnn_34.pth"
 
     # Using GPU if available
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    
+    test = [[[4,2,7,1],[2,4,7,16],[10,8,2,4]],[[11,12,130,14],[6,5,7,8],[101,6,7,8]],[[4,2,7,1],[2,4,7,16],[10,8,2,4]],[[11,12,130,14],[6,5,7,8],[101,6,7,8]]]
+    test = torch.tensor(test)
+    # t = test.max(2)[0]
+    # print(t)
+    # t = test.max(2)[1]
+    # print(t)
+    # t = test.max(2)[0].max(1)[0]
+    # print(t)
+    # t = test.max(2)[0].max(1)[1]
+    # print(t)
+    # t = test.max(2)[0].max(1)[0].max(0)[0]
+    # print(t)
+    # t = test.max(2)[0].max(1)[0].max(0)[1]
+    # print(t)
+
+    # b0 = test.max(2)[0].max(1)[0].max(0)[1]
+    # b1 = test.max(2)[0].max(1)[1][b0]
+    # b3 = test.max(2)[1][b0][b1]
+    # t = test.max(2)[0][b0][b1]
+    # print(t)
+    # print(b3)
+
 
     # Step 1a - Load data from both csv (measurements and coordinates)
     # Step 1b - Preprocess data
     
     # Set large to True if you want to use the full dataset
-    large = False
+    large = True
     df, wind_min, wind_max = load_and_process_wind_speed_dataset(dataset_size=large)
 
     # Step 2 - Build distance graph
+    root_graph = build_A_hat(df)
     adj_matrix = build_graph(df)
     adj_matrix = torch.tensor(adj_matrix).float()
     adj_matrix = adj_matrix.to(device)
@@ -42,8 +69,11 @@ if __name__ == "__main__":
                     gru_hidden_dim=num_predictions)
     model = model.to(device)
 
+    # Create a list of actions for RL agent
+    actions = createActions()
+
     learning_rate = 0.001
-    epochs = 100  # number of times the model sees the complete dataset
+    epochs = 150  # number of times the model sees the complete dataset
 
     # Defining Loss Function
     lossFunction = nn.MSELoss()  # Mean Squared Error - default for regression problems
@@ -58,13 +88,19 @@ if __name__ == "__main__":
     iter = 0
 
     best_loss = 0.03
-    patience = 0
+    best_loss_temp = 0.002
 
-    # Training loop
+    worst_loss = 0.003
+    iterloader = enumerate(train_loader)
+    tempInt, (batch, label) = next(iterloader)
+
+    patience = 0
+    
+    # GCN-GRU-RL training loop
+    time0 = datetime.datetime.now().timestamp()
     for epoch in range(epochs):  # Repeating for every epoch
         for i, (batch_x, batch_y) in enumerate(train_loader):  # for each batch in the train_loader
             outputs = model(adj_matrix, batch_x)
-
             # clear the gradients
             optimizer.zero_grad()
 
@@ -80,18 +116,43 @@ if __name__ == "__main__":
             optimizer.step()
             iter += 1
 
+            # take the batch with the worst performance
+            if loss.item() > worst_loss:
+                batch = batch_x
+                label = batch_y
+                worst_loss = loss.item()
+            
+            # save the model with the best performance and reset patience
             if loss.item() < best_loss:
                 torch.save(model.state_dict(), PATH)
                 best_loss = loss.item()
                 patience = 0
-
+            
             if iter % 100 == 0:
-                print("epoch: %d, iter: %d, patience: %d, loss: %1.5f" % (epoch, iter, patience, loss.item()))
+                print("epoch: %d, iter: %d, patience: %d, loss: %1.5f, best loss: %1.5f" % (epoch, iter, patience, loss.item(), best_loss))
+        
+        # reset the worst loss to be the best loss
+        worst_loss = best_loss
         iter = 0
         patience += 1
-        if patience > 10:
+        if patience > 20:
             break
-    
+        
+        # if the model has improved beyond the threshold, start fine tuning with reinforcement learning
+        if best_loss < best_loss_temp:
+            best_loss_temp = best_loss
+            RL_Agent = DQNTrainer(model, root_graph, wind_max, wind_min, actions)
+            adj_matrix = RL_Agent.train(adj_matrix, batch, label)
+            del RL_Agent
+
+
+    time1 = datetime.datetime.now().timestamp()
+    trainingTime = time1 - time0
+
+    # RL loop
+    #for i, (batch_x, batch_y) in enumerate(train_loader):
+    #    print("test")
+
     # Testing loop
     model = GCN_GRU(input_dim=num_attr, hidden_dim=num_attr, output_dim=num_attr, gru_input=attr_station_flat,
                     gru_hidden_dim=num_predictions)
@@ -101,7 +162,7 @@ if __name__ == "__main__":
         for (batch_x, batch_y) in test_loader:
             outputs = model(adj_matrix, batch_x)
             test_out_inv_norm = outputs.detach().cpu().numpy() * (wind_max - wind_min) + wind_min
-            test_lab_inv_norm = batch_y.detach().cpu().numpy() * (wind_max - wind_min) + wind_min
+            test_lab_inv_norm = batch_y.detach().cpu().numpy() * (wind_max - wind_min) + wind_min + [1]
             test_diff = abs(test_lab_inv_norm[0] - test_out_inv_norm)
             test_loss_list.append(test_diff)
             predictions.append(test_out_inv_norm)
@@ -161,9 +222,11 @@ if __name__ == "__main__":
     two_hour_stats_df = pd.DataFrame(stats2, columns=col_labels, index=stations)
     three_hour_stats_df = pd.DataFrame(stats3, columns=col_labels, index=stations)
 
-    print(one_hour_stats_df)
-    print(two_hour_stats_df)
-    print(three_hour_stats_df)
+    #print(one_hour_stats_df)
+    #print(two_hour_stats_df)
+    #print(three_hour_stats_df)
+    
+    print(trainingTime)
 
     one_hour = [l[-1, 0 : num_stations] for l in test_loss_list]
     two_hour = [l[-1, num_stations : 2*num_stations] for l in test_loss_list]
