@@ -17,6 +17,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
 
+globalGraph = np.array([0])
+
 class ReplayMemory(object):
 
     def __init__(self, capacity):
@@ -56,22 +58,30 @@ def createActions():
     for i in range(34):
         for j in range(34):
             if i != j:
-                action = [i,j,0.01]
+                action = [i,j,0.001]
                 actions.append(action)
-                action = [i,j,-0.01]
+                action = [i,j,-0.001]
                 actions.append(action)
     return actions
 
 class DQNTrainer(object):
     def __init__(self, model, graph, wind_max, wind_min, actions):
         self.model = model
-        self.graph = graph
+        global globalGraph
+        globalGraph = graph
         self.wind_max = wind_max
         self.wind_min = wind_min
         self.actions = actions
-
+        
+        # BATCH_SIZE is the number of transitions sampled from the replay buffer
+        # GAMMA is the discount factor as mentioned in the previous section
+        # EPS_START is the starting value of epsilon
+        # EPS_END is the final value of epsilon
+        # EPS_DECAY controls the rate of exponential decay of epsilon, higher means a slower decay
+        # TAU is the update rate of the target network
+        # LR is the learning rate of the ``AdamW`` optimizer
         self.BATCH_SIZE = 128
-        self.GAMMA = 0.99
+        self.GAMMA = 0.5
         self.EPS_START = 0.9
         self.EPS_END = 0.05
         self.EPS_DECAY = 1000
@@ -82,23 +92,27 @@ class DQNTrainer(object):
 
         self.steps_done = 0
 
-    def step(self, modelAdj, attr, action, truth):
-        action = action.detach().cpu().numpy()
-        graph = self.graph
-        graph[action[0][0][0][0]][action[0][0][0][1]] = graph[action[0][0][0][0]][action[0][0][0][1]] + action[0][0][0][2]
+    def step(self, graph, modelAdj, attr, action, truth):
+        #action = action.detach().cpu().numpy()
+        previousGraph = graph
+        currentGraph = graph
+        currentGraph[action[0]][action[1]] = previousGraph[action[0]][action[1]] + action[2]
 
-        terminated = bool( np.max(self.graph) > 1 or np.min(self.graph) < 0 )
+        # graphMax = np.max(graph)
+        # graphMin = np.min(graph)
+        # terminated = bool( graphMax > 1 or graphMin < 0 )
+        terminated = False
 
         lab = truth.detach().cpu().numpy() * (self.wind_max - self.wind_min) + self.wind_min
 
         modelOutput = self.model(modelAdj,attr)
         modelOut = modelOutput.detach().cpu().numpy() * (self.wind_max - self.wind_min) + self.wind_min
 
-        previousAdj = torch.tensor(build_A_star(self.graph)).float().to(device)
+        previousAdj = torch.tensor(build_A_star(previousGraph)).float().to(device)
         previousOutput = self.model(previousAdj, attr)
         previousOut = previousOutput.detach().cpu().numpy() * (self.wind_max - self.wind_min) + self.wind_min
 
-        currentAdj = torch.tensor(build_A_star(graph)).float().to(device)
+        currentAdj = torch.tensor(build_A_star(currentGraph)).float().to(device)
         currentOutput = self.model(currentAdj, attr)
         currentOut = currentOutput.detach().cpu().numpy() * (self.wind_max - self.wind_min) + self.wind_min
         
@@ -106,27 +120,40 @@ class DQNTrainer(object):
         previousDiff = abs(lab[0][-1] - previousOut[-1])
         currentDiff = abs(lab[0][-1] - currentOut[-1])
 
-        reward = 1.0
+        # reward = 1.0
+        reward = 0.0
+        currentDiffMean = np.mean(currentDiff)
+        modelDiffMean = np.mean(modelDiff)
+        previousDiffMean = np.mean(previousDiff)
 
-        if np.mean(currentDiff) > np.mean(modelDiff):
-            reward = -1.0
+        currentDiffMax = np.max(currentDiff)
+        previousDiffMax = np.max(previousDiff)
 
-        if np.mean(currentDiff) < np.mean(modelDiff):
-            reward = -1.0
+        if currentDiffMean > modelDiffMean:
+            # reward += -1.0
+            terminated = True
 
-        if np.mean(currentDiff) > np.mean(previousDiff):
-            reward = -1.0
+        if currentDiffMean < modelDiffMean:
+            reward += 1.0
 
-        if np.max(currentDiff) > np.max(currentDiff):
-            reward = -2.0
+        if currentDiffMean > previousDiffMean:
+            reward += -1.0
+            # terminated = True
+
+        if currentDiffMax > previousDiffMax:
+            reward += -2.0
         
-        if np.mean(currentDiff) < np.mean(previousDiff):
-            reward = 1.0
+        if currentDiffMean < previousDiffMean:
+            reward += 1.0
 
-        if np.max(currentDiff) < np.max(previousDiff):
-            reward = 2.0
-            if np.max(currentDiff) < 15:
-                reward = 10.0
+        if currentDiffMax < previousDiffMax:
+            reward += 2.0
+            if currentDiffMax < 15:
+                reward += 10.0
+
+        if terminated:
+            reward += -10.0
+            graph = globalGraph
 
         return graph, reward, terminated, {}
 
@@ -145,9 +172,12 @@ class DQNTrainer(object):
                 b1 = x.max(3)[0].max(2)[0].max(1)[1][b0]
                 b2 = x.max(3)[0].max(2)[1][b0][b1]
                 sample = x.max(3)[1][b0][b1][b2]
-                return torch.tensor([[[self.actions[sample]]]], device=device, dtype=torch.long)
+                # return torch.tensor([[[[sample]]]], device=device, dtype=torch.float)
+                #return torch.tensor([[[self.actions[sample]]]], device=device, dtype=torch.float)
+                return torch.tensor([[[[random.randint(0,2243)]]]], device=device, dtype=torch.float)
         else:
-            return torch.tensor([[[random.choice(self.actions)]]], device=device, dtype=torch.long)
+            return torch.tensor([[[[random.randint(0,2243)]]]], device=device, dtype=torch.float)
+            #return torch.tensor([[[random.choice(self.actions)]]], device=device, dtype=torch.float)
     
     def optimize_model(self):
         if len(self.memory) < self.BATCH_SIZE:
@@ -172,8 +202,9 @@ class DQNTrainer(object):
         # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
         # columns of actions taken. These are the actions which would've been taken
         # for each batch state according to policy_net
-
-        state_action_values = self.policy_net(state_batch).gather(1, action_batch)
+        temp = self.policy_net(state_batch)
+        temp2 = temp.gather(3, action_batch)
+        state_action_values = temp2
 
         # Compute V(s_{t+1}) for all next states.
         # Expected values of actions for non_final_next_states are computed based
@@ -182,6 +213,7 @@ class DQNTrainer(object):
         # state value or 0 in case the state was final.
         next_state_values = torch.zeros(self.BATCH_SIZE, device=device)
         with torch.no_grad():
+            temp = self.target_net(non_final_next_states).max(3)[0].max(2)[0].max(1)[0]
             next_state_values[non_final_mask] = self.target_net(non_final_next_states).max(3)[0].max(2)[0].max(1)[0]
         # Compute the expected Q values
         expected_state_action_values = (next_state_values * self.GAMMA) + reward_batch
@@ -197,19 +229,13 @@ class DQNTrainer(object):
         torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), 100)
         self.optimizer.step()
     
-    def train(self, adj, attr, truth):
+    def train(self, adj, attr, truth, epoch, loss):
         # TRAINING
-        # BATCH_SIZE is the number of transitions sampled from the replay buffer
-        # GAMMA is the discount factor as mentioned in the previous section
-        # EPS_START is the starting value of epsilon
-        # EPS_END is the final value of epsilon
-        # EPS_DECAY controls the rate of exponential decay of epsilon, higher means a slower decay
-        # TAU is the update rate of the target network
-        # LR is the learning rate of the ``AdamW`` optimizer
         
         # Get the number of state observations
         primeState = torch.matmul(adj, attr)
-        graph = self.graph
+        graph = globalGraph
+        bestGraph = graph
         n_observations = primeState.size(3)
         n_time_steps = primeState.size(1)
 
@@ -219,25 +245,33 @@ class DQNTrainer(object):
 
         self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.LR, amsgrad=True)
         self.memory = ReplayMemory(10000)
+        memory = self.memory
 
-        for i in range(2):
-            graph = self.graph
+        avgDiff = 0.0
+        rewardThreshold = 199.0
+        returnedGraph = globalGraph
+
+        for i in range(40):
+            graph = globalGraph
             state = primeState
-
-            for j in range(150):
-                print(j)
-                action = self.select_action(state)
+            totalReward = 0.0
+            tempAdj = torch.tensor(build_A_star(graph)).float().to(device)
+            for j in range(200):
+                print("epoch: %d, loss: %1.5f generation: %d, step: %d, diff: %1.5f" % (epoch, loss, i, j, avgDiff))
+                action = self.select_action(state).to(torch.int64)
+                actionIndex = action[0][0][0][0]
+                convertedAction = self.actions[actionIndex]
                 
-                graph, reward, terminated, _ = self.step(adj, attr, action, truth)
+                graph, reward, terminated, _ = self.step(graph, adj, attr, convertedAction, truth)
                 reward = torch.tensor([reward], device=device)
-                
+                totalReward = totalReward + reward
                 if terminated:
                     next_state = None
                 else:
                     tempAdj = torch.tensor(build_A_star(graph)).float().to(device)
                     next_state = torch.matmul(tempAdj,attr)
 
-                self.memory.push(state, action, next_state, reward)
+                memory.push(state, action, next_state, reward)
                 state = next_state
 
                 self.optimize_model()
@@ -251,14 +285,17 @@ class DQNTrainer(object):
 
                 if terminated:
                     break
-            
+            if totalReward > rewardThreshold:
+                rewardThreshold = totalReward
+                bestGraph = graph
+            returnedGraph = bestGraph
             output = self.model(tempAdj,attr)
             modelOut = output.detach().cpu().numpy() * (self.wind_max - self.wind_min) + self.wind_min
             lab = truth.detach().cpu().numpy() * (self.wind_max - self.wind_min) + self.wind_min
             modelDiff = abs(lab[0][-1] - modelOut[-1])
             avgDiff = np.mean(modelDiff)
-            print("generation: %d, diff: %1.5f" % (i, avgDiff))
+            print("epoch: %d, loss: %1.5f generation: %d, step: %d, diff: %1.5f" % (epoch, loss, i, j, avgDiff))
             self.steps_done = 0
         
-        return torch.tensor(build_A_star(graph)).float().to(device)
+        return torch.tensor(build_A_star(returnedGraph)).float().to(device), returnedGraph
             

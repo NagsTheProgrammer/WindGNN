@@ -10,10 +10,10 @@ def __create_sequences(data, seq_length):
     r = int((len(data) - len(data) % seq_length) / seq_length)
 
     for i in range(r-1):
-        x = data[(i * seq_length):((i + 1) * seq_length), :, 2:15]
-        y1 = data[(i * seq_length + 1):((i + 1) * seq_length + 1), :, 13]
-        y2 = data[(i * seq_length + 2):((i + 1) * seq_length + 2), :, 13]
-        y3 = data[(i * seq_length + 3):((i + 1) * seq_length + 3), :, 13]
+        x = data[(i * seq_length):((i + 1) * seq_length), :, 2:15] # 2:15 for OG paper, 2:4 for wind only, 2:6 for wind and direction
+        y1 = data[(i * seq_length + 1):((i + 1) * seq_length + 1), :, 13] # 13 for OG paper, 3 for wind only, 5 for wind and direction
+        y2 = data[(i * seq_length + 2):((i + 1) * seq_length + 2), :, 13] # "   "  "    "    "  "   "    "
+        y3 = data[(i * seq_length + 3):((i + 1) * seq_length + 3), :, 13] # "   "  "    "    "  "   "    "
         ym = np.concatenate((y1, y2), axis=1)
         y = np.concatenate((ym, y3), axis=1)
         xs.append(x)
@@ -45,31 +45,57 @@ def generate_sequences(df, batch_size, device):
             initial = False
         else:
             attr_matrix_transpose = np.concatenate((attr_matrix_transpose, station_matrix), axis=1)
-
-    # Split the data into train and test sets, shuffling
-    train_df, test_df = train_test_split(attr_matrix_transpose, test_size=0.3, shuffle=False)
-
+    
     # Create sequences
     seq_length = 168  # 168-hour sequences
-    train_sequences, train_labels = __create_sequences(train_df, seq_length)
+
+    # Split the data into train and test sets
+    temp_df, test_df = train_test_split(attr_matrix_transpose, test_size=0.2, shuffle=False)
+    dev1, dev2 = train_test_split(temp_df, test_size=0.5, shuffle=False)
+    train1, val1 = train_test_split(dev1, test_size=0.2, shuffle=False)
+    train2, val2 = train_test_split(dev2, test_size=0.2, shuffle=False)
+
+    train1_sequence, train1_label = __create_sequences(train1, seq_length)
+    train2_sequence, train2_label = __create_sequences(train2, seq_length)
+    train_sequences = np.concatenate((train1_sequence, train2_sequence))
+    train_labels = np.concatenate((train1_label, train2_label))
+    
+    val1_sequence, val1_label = __create_sequences(val1, seq_length)
+    val2_sequence, val2_label = __create_sequences(val2, seq_length)
+    validate_sequences = np.concatenate((val1_sequence, val2_sequence))
+    validate_labels = np.concatenate((val1_label, val2_label))
+
     test_sequences, test_labels = __create_sequences(test_df, seq_length)
 
     # Convert sequences to tensors
     train_sequences = torch.tensor(train_sequences.tolist(), dtype=torch.float).to(device)
     train_labels = torch.tensor(train_labels.tolist(), dtype=torch.float).to(device)
+
+    validate_sequences = torch.tensor(validate_sequences.tolist(), dtype=torch.float).to(device)
+    validate_labels = torch.tensor(validate_labels.tolist(), dtype=torch.float).to(device)
+
     test_sequences = torch.tensor(test_sequences.tolist(), dtype=torch.float).to(device)
     test_labels = torch.tensor(test_labels.tolist(), dtype=torch.float).to(device)
 
     # Getting loaders and epochs
     train_dataset = TensorDataset(train_sequences, train_labels)
+    validate_dataset = TensorDataset(validate_sequences, validate_labels)
     test_dataset = TensorDataset(test_sequences, test_labels)
 
 
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                batch_size=1,
                                                shuffle=True)
+    val_loader = torch.utils.data.DataLoader(dataset=validate_dataset,
+                                             batch_size=1,
+                                             shuffle=True)
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                                               batch_size=1,
                                               shuffle=True)
+    
 
-    return train_loader, test_loader, num_attr, num_stations
+    train_loader2 = torch.utils.data.DataLoader(dataset=train_dataset,
+                                               batch_size=1,
+                                               shuffle=False)
+
+    return train_loader, train_loader2, val_loader, test_loader, num_attr, num_stations

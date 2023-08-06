@@ -16,39 +16,18 @@ if __name__ == "__main__":
 
     # Using GPU if available
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    
-    test = [[[4,2,7,1],[2,4,7,16],[10,8,2,4]],[[11,12,130,14],[6,5,7,8],[101,6,7,8]],[[4,2,7,1],[2,4,7,16],[10,8,2,4]],[[11,12,130,14],[6,5,7,8],[101,6,7,8]]]
-    test = torch.tensor(test)
-    # t = test.max(2)[0]
-    # print(t)
-    # t = test.max(2)[1]
-    # print(t)
-    # t = test.max(2)[0].max(1)[0]
-    # print(t)
-    # t = test.max(2)[0].max(1)[1]
-    # print(t)
-    # t = test.max(2)[0].max(1)[0].max(0)[0]
-    # print(t)
-    # t = test.max(2)[0].max(1)[0].max(0)[1]
-    # print(t)
-
-    # b0 = test.max(2)[0].max(1)[0].max(0)[1]
-    # b1 = test.max(2)[0].max(1)[1][b0]
-    # b3 = test.max(2)[1][b0][b1]
-    # t = test.max(2)[0][b0][b1]
-    # print(t)
-    # print(b3)
-
-
+    torch.cuda.empty_cache()
     # Step 1a - Load data from both csv (measurements and coordinates)
     # Step 1b - Preprocess data
     
     # Set large to True if you want to use the full dataset
     large = True
     df, wind_min, wind_max = load_and_process_wind_speed_dataset(dataset_size=large)
+    
 
     # Step 2 - Build distance graph
     root_graph = build_A_hat(df)
+    temp_graph = root_graph
     adj_matrix = build_graph(df)
     adj_matrix = torch.tensor(adj_matrix).float()
     adj_matrix = adj_matrix.to(device)
@@ -60,7 +39,7 @@ if __name__ == "__main__":
     stations = np.unique(attr_matrix[:, 0])
     num_stations = len(stations)
     batch_size = 168
-    train_loader, test_loader, num_attr, num_stations = generate_sequences(attr_matrix, batch_size, device)
+    train_loader, train_loader2, val_loader, test_loader, num_attr, num_stations = generate_sequences(attr_matrix, batch_size, device)
 
     # Step 5 - Defining Two-Layer GCN with GRU
     attr_station_flat = num_attr * num_stations
@@ -73,7 +52,7 @@ if __name__ == "__main__":
     actions = createActions()
 
     learning_rate = 0.001
-    epochs = 150  # number of times the model sees the complete dataset
+    epochs = 500  # number of times the model sees the complete dataset
 
     # Defining Loss Function
     lossFunction = nn.MSELoss()  # Mean Squared Error - default for regression problems
@@ -85,10 +64,14 @@ if __name__ == "__main__":
     test_loss_list = []
     predictions = []
     truth = []
+    labels_RL = []
     iter = 0
 
     best_loss = 0.03
+    #best_loss_temp = 1
     best_loss_temp = 0.002
+
+    val_loss = 0.03
 
     worst_loss = 0.003
     iterloader = enumerate(train_loader)
@@ -126,32 +109,49 @@ if __name__ == "__main__":
             if loss.item() < best_loss:
                 torch.save(model.state_dict(), PATH)
                 best_loss = loss.item()
-                patience = 0
             
-            if iter % 100 == 0:
-                print("epoch: %d, iter: %d, patience: %d, loss: %1.5f, best loss: %1.5f" % (epoch, iter, patience, loss.item(), best_loss))
+        
+        with torch.no_grad():
+            for j, (batch_x, batch_y) in enumerate(val_loader):
+                outputs = model(adj_matrix, batch_x)
+                loss = lossFunction(outputs, batch_y)
+                # out_inv_norm = outputs.detach().cpu().numpy() * (wind_max - wind_min) + wind_min
+                # lab_inv_norm = batch_y.detach().cpu().numpy() * (wind_max - wind_min) + wind_min + [1]
+                # val_diff = abs(lab_inv_norm[0] - out_inv_norm)
+                if loss.item() < val_loss:
+                    patience = 0
+                    val_loss = loss.item()
         
         # reset the worst loss to be the best loss
         worst_loss = best_loss
         iter = 0
         patience += 1
-        if patience > 20:
+
+        print("epoch: %d, patience: %d, val loss: %1.5f test loss: %1.5f" % (epoch, patience, val_loss, best_loss))
+
+        if patience > 1:
             break
         
         # if the model has improved beyond the threshold, start fine tuning with reinforcement learning
-        if best_loss < best_loss_temp:
-            best_loss_temp = best_loss
-            RL_Agent = DQNTrainer(model, root_graph, wind_max, wind_min, actions)
-            adj_matrix = RL_Agent.train(adj_matrix, batch, label)
-            del RL_Agent
+        # if best_loss < best_loss_temp:
+        #     best_loss_temp = best_loss
+        #     RL_Agent = DQNTrainer(model, root_graph, wind_max, wind_min, actions)
+        #     adj_matrix, temp_graph = RL_Agent.train(adj_matrix, batch, label, epoch, best_loss)
+        #     del RL_Agent
 
+    with torch.no_grad():
+        for i, (batch_x, batch_y) in enumerate(train_loader2):
+            outputs = model(adj_matrix, batch_x)
+            loss = lossFunction(outputs, batch_y)
+            labels_RL.append(loss)
+
+    torch.cuda.empty_cache()
+
+    RL_Agent = DQNTrainer(model, root_graph, wind_max, wind_min, actions)
+    adj_matrix, temp_graph = RL_Agent.train(adj_matrix, batch, label, epoch, best_loss)
 
     time1 = datetime.datetime.now().timestamp()
     trainingTime = time1 - time0
-
-    # RL loop
-    #for i, (batch_x, batch_y) in enumerate(train_loader):
-    #    print("test")
 
     # Testing loop
     model = GCN_GRU(input_dim=num_attr, hidden_dim=num_attr, output_dim=num_attr, gru_input=attr_station_flat,
