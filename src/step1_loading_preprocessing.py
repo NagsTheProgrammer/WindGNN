@@ -32,13 +32,19 @@ def load_and_process_wind_speed_dataset(verbose: bool = True, dataset_size: bool
     # remove unwanted stations
     full_df = full_df[full_df['Station Name'] != 'Enchant 2 AGCM']
 
+    # Change direction columns
+    full_df['Wind Dir. 10 m Syno. (°)'] = full_df['Wind Dir. 10 m Syno. (°)'] - 180
+    full_df['Wind Dir. 10 m Avg. (°)'] = full_df['Wind Dir. 10 m Avg. (°)'] - 180
+    full_df['Wind Dir EW Syno'] = abs(full_df['Wind Dir. 10 m Syno. (°)']) - 90
+    full_df['Wind Dir EW Avg'] = abs(full_df['Wind Dir. 10 m Avg. (°)']) - 90
+
     # select numerical features
     numerical_features = ['Air Temp. Inst. (°C)', 'Est. Dew Point Temp. (°C)', 'Air Temp. Min. (°C)',
                           'Air Temp. Max. (°C)', 'Air Temp. Avg. (°C)', 'Humidity Inst. (%)',
                           'Relative Humidity Avg. (%)', 'Precip. Accumulated (mm)', 'Precip. (mm)',
                           'Precip. Accumulated (WG) (mm)', 'Precip. (WG) (mm)', 'Wind Speed 10 m Syno. (km/h)',
                           'Wind Dir. 10 m Syno. (°)', 'Wind Speed 10 m Avg. (km/h)', 'Wind Dir. 10 m Avg. (°)',
-                          'Sclerotinia Infection Risk']
+                          'Sclerotinia Infection Risk', 'Wind Dir EW Syno', 'Wind Dir EW Avg']
 
     # add nullable flags
     for col in full_df.columns:
@@ -58,10 +64,13 @@ def load_and_process_wind_speed_dataset(verbose: bool = True, dataset_size: bool
     wind_data_min = torch.min(wind_data, dim=0, keepdim=True)[0].numpy()
     wind_data_max = torch.max(wind_data, dim=0, keepdim=True)[0].numpy()
 
+    
+
     numerical_data = torch.tensor(full_df[numerical_features].values)
     numerical_data_min = torch.min(numerical_data, dim=0, keepdim=True)[0]
     numerical_data_max = torch.max(numerical_data, dim=0, keepdim=True)[0]
-    normalized_numerical_data = (numerical_data - numerical_data_min) / (numerical_data_max - numerical_data_min)
+    # normalized_numerical_data = (numerical_data - numerical_data_min) / (numerical_data_max - numerical_data_min)
+    normalized_numerical_data = (numerical_data - (numerical_data_min + numerical_data_max)/2) / (numerical_data_max - numerical_data_min) / 2
     full_df[numerical_features] = normalized_numerical_data.numpy()
 
     if verbose:

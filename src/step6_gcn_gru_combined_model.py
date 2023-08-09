@@ -13,7 +13,7 @@ class GCN_GRU(nn.Module):
     def forward(self, adj_matrix, attr_matrix):
         # Perform the first graph convolutional layer
         num_seq = attr_matrix.size(1)
-        flat = attr_matrix.size(2) * 13 # 13 for OG paper, 2 for wind only, 4 for wind and direction
+        flat = attr_matrix.size(2) * 15 # 15 for OG paper, 2 for wind only, 4 for wind and direction
         hidden1 = self.conv1(adj_matrix, attr_matrix)
 
         # Perform the second graph convolutional layer. View() combines the last two dimensions for the GRU layer

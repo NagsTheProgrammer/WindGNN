@@ -5,7 +5,7 @@ import torch.nn as nn
 class GraphConvLayer(nn.Module):
     def __init__(self, input_dim, output_dim):
         super(GraphConvLayer, self).__init__()
-        
+        self.dropout = nn.Dropout(p=0.025)
         self.weight = nn.Parameter(
             torch.randn(input_dim, output_dim))  # Weight matrix, for our problem, input_dim = output_dim
 
@@ -21,5 +21,5 @@ class GraphConvLayer(nn.Module):
 
         # Apply the ReLU activation function
         out = self.relu(out)
-
+        # out = self.dropout(out)
         return out

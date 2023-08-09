@@ -10,7 +10,7 @@ def __create_sequences(data, seq_length):
     r = int((len(data) - len(data) % seq_length) / seq_length)
 
     for i in range(r-1):
-        x = data[(i * seq_length):((i + 1) * seq_length), :, 2:15] # 2:15 for OG paper, 2:4 for wind only, 2:6 for wind and direction
+        x = data[(i * seq_length):((i + 1) * seq_length), :, 2:17] # 2:17 for OG paper, 2:4 for wind only, 2:6 for wind and direction
         y1 = data[(i * seq_length + 1):((i + 1) * seq_length + 1), :, 13] # 13 for OG paper, 3 for wind only, 5 for wind and direction
         y2 = data[(i * seq_length + 2):((i + 1) * seq_length + 2), :, 13] # "   "  "    "    "  "   "    "
         y3 = data[(i * seq_length + 3):((i + 1) * seq_length + 3), :, 13] # "   "  "    "    "  "   "    "

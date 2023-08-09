@@ -52,7 +52,7 @@ if __name__ == "__main__":
     actions = createActions()
 
     learning_rate = 0.001
-    epochs = 500  # number of times the model sees the complete dataset
+    epochs = 700  # number of times the model sees the complete dataset
 
     # Defining Loss Function
     lossFunction = nn.MSELoss()  # Mean Squared Error - default for regression problems
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     iter = 0
 
     best_loss = 0.03
-    #best_loss_temp = 1
+    # best_loss_temp = 1
     best_loss_temp = 0.002
 
     val_loss = 0.03
@@ -129,7 +129,7 @@ if __name__ == "__main__":
 
         print("epoch: %d, patience: %d, val loss: %1.5f test loss: %1.5f" % (epoch, patience, val_loss, best_loss))
 
-        if patience > 1:
+        if patience > 50:
             break
         
         # if the model has improved beyond the threshold, start fine tuning with reinforcement learning
@@ -139,20 +139,25 @@ if __name__ == "__main__":
         #     adj_matrix, temp_graph = RL_Agent.train(adj_matrix, batch, label, epoch, best_loss)
         #     del RL_Agent
 
-    with torch.no_grad():
-        for i, (batch_x, batch_y) in enumerate(train_loader2):
-            outputs = model(adj_matrix, batch_x)
-            loss = lossFunction(outputs, batch_y)
-            labels_RL.append(loss)
+    # with torch.no_grad():
+    #     for i, (batch_x, batch_y) in enumerate(train_loader2):
+    #         outputs = model(adj_matrix, batch_x)
+    #         loss = lossFunction(outputs, batch_y)
+    #         labels_RL.append(loss)
 
-    torch.cuda.empty_cache()
+    # torch.cuda.empty_cache()
 
-    RL_Agent = DQNTrainer(model, root_graph, wind_max, wind_min, actions)
-    adj_matrix, temp_graph = RL_Agent.train(adj_matrix, batch, label, epoch, best_loss)
+    # for i, (batch_x, batch_y) in enumerate(train_loader2):
+    #     print("test")
+
+    # RL_Agent = DQNTrainer(model, root_graph, wind_max, wind_min, actions)
+    # adj_matrix, temp_graph = RL_Agent.train(adj_matrix, batch, label, epoch, best_loss)
 
     time1 = datetime.datetime.now().timestamp()
     trainingTime = time1 - time0
 
+    time_index = []
+    i = 0
     # Testing loop
     model = GCN_GRU(input_dim=num_attr, hidden_dim=num_attr, output_dim=num_attr, gru_input=attr_station_flat,
                     gru_hidden_dim=num_predictions)
@@ -167,11 +172,18 @@ if __name__ == "__main__":
             test_loss_list.append(test_diff)
             predictions.append(test_out_inv_norm)
             truth.append(test_lab_inv_norm)
+            time_index.append(i)
+            i += 1
+
 
     # Step 7 - Printing Results
     stats1 = []
     stats2 = []
     stats3 = []
+
+    stats_comp1 = np.array([[None]*30,[None]*30])
+    stats_comp2 = np.array([[None]*30,[None]*30])
+    stats_comp3 = np.array([[None]*30,[None]*30])
 
     for i in range(num_stations):
         one_hour_prediction = [l[-1, i] for l in predictions]
@@ -185,6 +197,8 @@ if __name__ == "__main__":
         acc_avg1 = np.average(acc1)
         acc_std1 = np.std(acc1)
 
+        stats_temp1 = np.stack([one_hour_error,one_hour_prediction, one_hour_truth])
+        stats_comp1 = np.append(stats_comp1, stats_temp1, axis = 0)
         stats1.append([rms1, mae1, acc_avg1, acc_std1])
         ###
         ###
@@ -200,6 +214,8 @@ if __name__ == "__main__":
         acc_avg2 = np.average(acc2)
         acc_std2 = np.std(acc2)
 
+        stats_temp2 = np.stack([two_hour_error,two_hour_prediction,two_hour_truth])
+        stats_comp2 = np.append(stats_comp2, stats_temp2, axis = 0)
         stats2.append([rms2, mae2, acc_avg2, acc_std2])
         ###
         ###
@@ -215,6 +231,8 @@ if __name__ == "__main__":
         acc_avg3 = np.average(acc3)
         acc_std3 = np.std(acc3)
 
+        stats_temp3 = np.stack([three_hour_error,three_hour_prediction,three_hour_truth])
+        stats_comp3 = np.append(stats_comp3, stats_temp3, axis = 0)
         stats3.append([rms3, mae3, acc_avg3, acc_std3])
 
     col_labels = ['RMSE', 'MAE', 'Average Accuracy', 'Accuracy Deviation']
@@ -231,6 +249,17 @@ if __name__ == "__main__":
     one_hour = [l[-1, 0 : num_stations] for l in test_loss_list]
     two_hour = [l[-1, num_stations : 2*num_stations] for l in test_loss_list]
     three_hour = [l[-1, 2*num_stations : 3*num_stations] for l in test_loss_list]
+    
+    
+    one_hour_comparison_df = pd.DataFrame(stats_comp1, columns=time_index)
+    one_hour_comparison_df.to_csv('one_hour_comparison.csv', index=True)
+
+    two_hour_comparison_df = pd.DataFrame(stats_comp2, columns=time_index)
+    two_hour_comparison_df.to_csv('two_hour_comparison.csv', index=True)
+
+    three_hour_comparison_df = pd.DataFrame(stats_comp3, columns=time_index)
+    three_hour_comparison_df.to_csv('three_hour_comparison.csv', index=True)
+
 
     one_hr_df = pd.DataFrame(one_hour, columns=stations)
     two_hr_df = pd.DataFrame(two_hour, columns=stations)

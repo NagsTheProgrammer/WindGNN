@@ -168,13 +168,13 @@ class DQNTrainer(object):
                 # second column on max result is index of where max element was
                 # found, so we pick action with the larger expected reward.
                 x = self.policy_net(state)
-                b0 = x.max(3)[0].max(2)[0].max(1)[0].max(0)[1]
-                b1 = x.max(3)[0].max(2)[0].max(1)[1][b0]
-                b2 = x.max(3)[0].max(2)[1][b0][b1]
-                sample = x.max(3)[1][b0][b1][b2]
-                # return torch.tensor([[[[sample]]]], device=device, dtype=torch.float)
-                #return torch.tensor([[[self.actions[sample]]]], device=device, dtype=torch.float)
-                return torch.tensor([[[[random.randint(0,2243)]]]], device=device, dtype=torch.float)
+                b0 = x.min(3)[0].min(2)[0].min(1)[0].min(0)[1]
+                b1 = x.min(3)[0].min(2)[0].min(1)[1][b0]
+                b2 = x.min(3)[0].min(2)[1][b0][b1]
+                sample = x.min(3)[1][b0][b1][b2]
+                return torch.tensor([[[[sample]]]], device=device, dtype=torch.float)
+                # return torch.tensor([[[self.actions[sample]]]], device=device, dtype=torch.float)
+                # return torch.tensor([[[[random.randint(0,2243)]]]], device=device, dtype=torch.float)
         else:
             return torch.tensor([[[[random.randint(0,2243)]]]], device=device, dtype=torch.float)
             #return torch.tensor([[[random.choice(self.actions)]]], device=device, dtype=torch.float)
@@ -288,12 +288,19 @@ class DQNTrainer(object):
             if totalReward > rewardThreshold:
                 rewardThreshold = totalReward
                 bestGraph = graph
-            returnedGraph = bestGraph
+                tempAdj = torch.tensor(build_A_star(bestGraph)).float().to(device)
+            
+            input = self.model(adj,attr)
+            modelIn = input.detach().cpu().numpy() * (self.wind_max - self.wind_min) + self.wind_min
             output = self.model(tempAdj,attr)
             modelOut = output.detach().cpu().numpy() * (self.wind_max - self.wind_min) + self.wind_min
             lab = truth.detach().cpu().numpy() * (self.wind_max - self.wind_min) + self.wind_min
             modelDiff = abs(lab[0][-1] - modelOut[-1])
+            inputDiff = abs(lab[0][-1] - modelIn[-1])
             avgDiff = np.mean(modelDiff)
+            avgInDiff = np.mean(inputDiff)
+            if avgDiff < avgInDiff:
+                returnedGraph = bestGraph
             print("epoch: %d, loss: %1.5f generation: %d, step: %d, diff: %1.5f" % (epoch, loss, i, j, avgDiff))
             self.steps_done = 0
         
