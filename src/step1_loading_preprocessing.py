@@ -64,14 +64,24 @@ def load_and_process_wind_speed_dataset(verbose: bool = True, dataset_size: bool
     wind_data_min = torch.min(wind_data, dim=0, keepdim=True)[0].numpy()
     wind_data_max = torch.max(wind_data, dim=0, keepdim=True)[0].numpy()
 
-    
-
     numerical_data = torch.tensor(full_df[numerical_features].values)
     numerical_data_min = torch.min(numerical_data, dim=0, keepdim=True)[0]
     numerical_data_max = torch.max(numerical_data, dim=0, keepdim=True)[0]
-    # normalized_numerical_data = (numerical_data - numerical_data_min) / (numerical_data_max - numerical_data_min)
-    normalized_numerical_data = (numerical_data - (numerical_data_min + numerical_data_max)/2) / (numerical_data_max - numerical_data_min) / 2
+    normalized_numerical_data = (numerical_data - numerical_data_min) / (numerical_data_max - numerical_data_min) # from 0 to 1
+    # normalized_numerical_data = (numerical_data - (numerical_data_min + numerical_data_max)/2) / (numerical_data_max - numerical_data_min) / 2 # from -1 to 1
+
+    # normalized_numerical_data[:,11] = (normalized_numerical_data[:,11] - torch.min(normalized_numerical_data[:,11])) / (torch.max(normalized_numerical_data[:,11]) - torch.min(normalized_numerical_data[:,11]))
+    # normalized_numerical_data[:,13] = (normalized_numerical_data[:,13] - torch.min(normalized_numerical_data[:,13])) / (torch.max(normalized_numerical_data[:,13]) - torch.min(normalized_numerical_data[:,13]))
+    
+    normalized_numerical_data[:,12] = ( normalized_numerical_data[:,12] - (torch.min(normalized_numerical_data[:,12]) + torch.max(normalized_numerical_data[:,12])) / 2 ) / (torch.max(normalized_numerical_data[:,12]) - torch.min(normalized_numerical_data[:,12])) / 2
+    normalized_numerical_data[:,14] = ( normalized_numerical_data[:,14] - (torch.min(normalized_numerical_data[:,14]) + torch.max(normalized_numerical_data[:,14])) / 2 ) / (torch.max(normalized_numerical_data[:,14]) - torch.min(normalized_numerical_data[:,14])) / 2
+    normalized_numerical_data[:,16] = ( normalized_numerical_data[:,16] - (torch.min(normalized_numerical_data[:,16]) + torch.max(normalized_numerical_data[:,16])) / 2 ) / (torch.max(normalized_numerical_data[:,16]) - torch.min(normalized_numerical_data[:,16])) / 2
+    normalized_numerical_data[:,17] = ( normalized_numerical_data[:,17] - (torch.min(normalized_numerical_data[:,17]) + torch.max(normalized_numerical_data[:,17])) / 2 ) / (torch.max(normalized_numerical_data[:,17]) - torch.min(normalized_numerical_data[:,17])) / 2
+
+    test = normalized_numerical_data.numpy()
     full_df[numerical_features] = normalized_numerical_data.numpy()
+    speed1 = normalized_numerical_data.select(1,11)
+    speed2 = normalized_numerical_data[:][13]
 
     if verbose:
         print("Loaded and preprocessed data. Shape:", full_df.shape)

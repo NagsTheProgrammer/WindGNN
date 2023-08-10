@@ -21,7 +21,7 @@ def __create_sequences(data, seq_length):
     xs1 = np.array(xs)
     ys1 = np.array(ys)
     indices = np.arange(xs1.shape[0])
-    np.random.shuffle(indices)
+    #np.random.shuffle(indices)
     xs1 = xs1[indices]
     ys1 = ys1[indices]
     return xs1, ys1
@@ -85,13 +85,13 @@ def generate_sequences(df, batch_size, device):
 
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                batch_size=1,
-                                               shuffle=True)
+                                               shuffle=False)
     val_loader = torch.utils.data.DataLoader(dataset=validate_dataset,
                                              batch_size=1,
-                                             shuffle=True)
+                                             shuffle=False)
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                                               batch_size=1,
-                                              shuffle=True)
+                                              shuffle=False)
     
 
     train_loader2 = torch.utils.data.DataLoader(dataset=train_dataset,

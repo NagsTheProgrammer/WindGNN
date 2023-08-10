@@ -9,6 +9,17 @@ from step6_gcn_gru_combined_model import *
 from step4_sequence_preparer import *
 from step7_DQN import *
 
+import pandas as pd
+
+#######################################
+# TO-DO (Aug 10, 2023)
+# Finish unsupervised clustering as per https://towardsdatascience.com/deep-clustering-with-sparse-data-b2eb1bf2922e
+# Left off by preprocessing attribute matrix to construct dynamic adjacency matrix: 
+#   made 26301 dataframes (one for each hour-time-step) of a 34x16 matrix (stations x attributes)
+# Need to code the encoder/manifold cluster algorithm
+#######################################
+
+
 if __name__ == "__main__":
     
     # Path to save best model to
@@ -17,6 +28,19 @@ if __name__ == "__main__":
     # Using GPU if available
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     torch.cuda.empty_cache()
+
+    t1 = [[[2,3],[4,5]],[[7,8],[9,1]],[[1,6],[5,2]]]
+    tt1 = torch.tensor(t1)
+    t2 = [[[1,6],[2,1]],[[1,4],[3,1]],[[1,7],[9,1]]]
+    tt2 = torch.tensor(t2)
+    t3 = [[1,0],[0,1]]
+    tt3 = torch.tensor(t3)
+
+    tOut1 = torch.matmul(tt3,tt2).numpy()
+    print(tOut1)
+    print("break")
+    tOut2 = torch.matmul(tt1,tt2).numpy()
+    print(tOut2)
     # Step 1a - Load data from both csv (measurements and coordinates)
     # Step 1b - Preprocess data
     
@@ -24,7 +48,6 @@ if __name__ == "__main__":
     large = True
     df, wind_min, wind_max = load_and_process_wind_speed_dataset(dataset_size=large)
     
-
     # Step 2 - Build distance graph
     root_graph = build_A_hat(df)
     temp_graph = root_graph
@@ -32,9 +55,14 @@ if __name__ == "__main__":
     adj_matrix = torch.tensor(adj_matrix).float()
     adj_matrix = adj_matrix.to(device)
 
-    # Step 3 - Select important features
-    attr_matrix = extract_features(df)
+    # Step 3 - Select important features and also return attributes for each time step
+    attr_matrix, attr_frames = extract_features(df)
+    # print(attr_matrix)
+    attr_matrix = attr_matrix.to_numpy()
 
+    # Step 3b - Use selected features to build adjacency matrix for each time step
+    
+    
     # Step 4 - generate train / test data sequences
     stations = np.unique(attr_matrix[:, 0])
     num_stations = len(stations)
@@ -52,7 +80,7 @@ if __name__ == "__main__":
     actions = createActions()
 
     learning_rate = 0.001
-    epochs = 700  # number of times the model sees the complete dataset
+    epochs = 500  # number of times the model sees the complete dataset
 
     # Defining Loss Function
     lossFunction = nn.MSELoss()  # Mean Squared Error - default for regression problems
@@ -129,7 +157,7 @@ if __name__ == "__main__":
 
         print("epoch: %d, patience: %d, val loss: %1.5f test loss: %1.5f" % (epoch, patience, val_loss, best_loss))
 
-        if patience > 50:
+        if patience > 40:
             break
         
         # if the model has improved beyond the threshold, start fine tuning with reinforcement learning
@@ -166,8 +194,10 @@ if __name__ == "__main__":
     with torch.no_grad():
         for (batch_x, batch_y) in test_loader:
             outputs = model(adj_matrix, batch_x)
-            test_out_inv_norm = outputs.detach().cpu().numpy() * (wind_max - wind_min) + wind_min
-            test_lab_inv_norm = batch_y.detach().cpu().numpy() * (wind_max - wind_min) + wind_min + [1]
+            test_out_inv_norm = (outputs.detach().cpu().numpy()) * (wind_max - wind_min) + wind_min
+            test_lab_inv_norm = (batch_y.detach().cpu().numpy()) * (wind_max - wind_min) + wind_min
+            # test_out_inv_norm = outputs.detach().cpu().numpy() * (wind_max + wind_min) * 2 + (wind_max + wind_min) / 2
+            # test_lab_inv_norm = batch_y.detach().cpu().numpy() * (wind_max + wind_min) * 2 + (wind_max + wind_min) / 2
             test_diff = abs(test_lab_inv_norm[0] - test_out_inv_norm)
             test_loss_list.append(test_diff)
             predictions.append(test_out_inv_norm)
